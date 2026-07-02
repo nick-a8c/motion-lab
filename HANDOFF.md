@@ -1,6 +1,6 @@
-# Wave Lab — Handoff
+# Motion Lab — Handoff
 
-A single-file, WebGL-based "motion lab". It now has **two pages**, switched by a top-center
+A single-file, WebGL-based "motion lab" (formerly "Wave Lab"). It now has **two pages**, switched by a top-center
 `PATTERN | THERMAL` pill:
 - **Pattern** — the original tool: gradient strip → Wave Warp ×2 → Mirror → Blur → Colorama,
   grown into a full generative + glitch playground (three-column UI). §1–§15 are all Pattern.

@@ -3,6 +3,7 @@
 # ignore everything, then whitelist the Wave Lab files.
 /*
 !/.gitignore
+!/README.md
 !/index.html
 !/HANDOFF.md
 !/index-floating-backup.html
