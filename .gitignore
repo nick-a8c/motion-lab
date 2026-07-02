@@ -1,0 +1,11 @@
+# This repo is scoped to the Wave Lab project only.
+# The parent "Claude Work" folder is a shared workspace with many unrelated projects —
+# ignore everything, then whitelist the Wave Lab files.
+/*
+!/.gitignore
+!/index.html
+!/HANDOFF.md
+!/index-floating-backup.html
+!/.claude
+/.claude/*
+!/.claude/launch.json

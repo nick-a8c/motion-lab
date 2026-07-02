@@ -1,0 +1,1874 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Wave Warp Lab</title>
+<style>
+  :root { --bg:#0a0a0c; --panel:#141418; --line:#26262e; --txt:#d8d8e0; --dim:#85858f; --accent:#5a6cff; }
+  * { box-sizing: border-box; }
+  html,body { margin:0; height:100%; overflow:hidden; background:#000; color:var(--txt);
+    font:13px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+  /* full-bleed stage */
+  #stage { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; background:#000; }
+  #glcanvas { width:min(100vw,100vh); height:min(100vw,100vh); aspect-ratio:1/1; background:#000; }
+  /* floating panel windows */
+  #panels { position:fixed; inset:0; pointer-events:none; z-index:40; }
+  .panel { position:absolute; width:300px; background:rgba(18,18,22,.97); border:1px solid var(--line);
+    border-radius:11px; box-shadow:0 16px 48px rgba(0,0,0,.55); pointer-events:auto; display:none;
+    backdrop-filter:blur(10px); }
+  .panel.open { display:block; }
+  .phead { display:flex; align-items:center; gap:8px; padding:8px 8px 8px 13px; cursor:grab;
+    border-bottom:1px solid var(--line); user-select:none; }
+  .phead.drag { cursor:grabbing; }
+  .ptitle { font-weight:600; font-size:13px; flex:1; }
+  .pbtns { display:flex; gap:4px; }
+  .pbtn { width:24px; height:22px; display:grid; place-items:center; border:1px solid var(--line);
+    border-radius:5px; background:#1c1c24; color:var(--dim); cursor:pointer; font-size:11px; }
+  .pbtn:hover { color:var(--txt); border-color:var(--accent); }
+  .pbtn.active { color:var(--accent); border-color:var(--accent); }
+  .pbtn.dock { display:none; }                 /* shown only once a panel is dragged off default */
+  .panel.moved .pbtn.dock { display:grid; }
+  .pbody { padding:11px 13px 13px; max-height:62vh; overflow-y:auto; }
+  .pbody::-webkit-scrollbar { width:8px; } .pbody::-webkit-scrollbar-thumb { background:#2c2c36; border-radius:4px; }
+  .sub { display:flex; align-items:center; gap:8px; font-weight:600; font-size:12px; color:var(--txt); margin:13px 0 6px; }
+  .sub:first-child { margin-top:0; }
+  .sub .toggle { margin-left:auto; }
+  .row { display:grid; grid-template-columns:74px 1fr 46px; align-items:center; gap:8px; margin:7px 0; }
+  .row label { color:var(--dim); font-size:12px; }
+  .row input[type=range] { width:100%; accent-color:var(--accent); }
+  .row .val { font-variant-numeric:tabular-nums; text-align:right; color:var(--txt); font-size:12px; }
+  .toggle { display:flex; align-items:center; gap:7px; margin-left:auto; font-weight:400; color:var(--dim); }
+  .toggle input { accent-color:var(--accent); }
+  select { width:100%; background:#0e0e12; color:var(--txt); border:1px solid var(--line);
+    border-radius:5px; padding:4px 6px; font-size:12px; }
+  .seg { color:var(--dim); font-size:11px; text-transform:uppercase; letter-spacing:.5px; margin:10px 0 4px; }
+  /* gradient editor */
+  #gradWrap { position:relative; margin:4px 0 10px; }
+  #gradBar { height:26px; border-radius:5px; border:1px solid var(--line); }
+  #gradHandles { position:absolute; left:0; top:0; right:0; height:26px; pointer-events:none; }
+  .ghdl { position:absolute; top:50%; width:10px; height:30px; box-sizing:border-box;
+    transform:translate(-50%,-50%); border:2px solid #fff; border-radius:3px;
+    box-shadow:0 0 2px rgba(0,0,0,.85); cursor:ew-resize; pointer-events:auto; }
+  .stopshead { display:flex; align-items:center; justify-content:space-between; margin:10px 0 4px; }
+  .stopshead .sbtns { display:flex; gap:6px; }
+  .stopshead .sbtn { cursor:pointer; color:var(--dim); width:20px; height:20px; line-height:18px;
+    text-align:center; border:1px solid var(--line); border-radius:4px; font-size:13px; user-select:none; }
+  .stopshead .sbtn:hover { color:#fff; border-color:#5a5a50; }
+  .stop { display:grid; grid-template-columns:50px 1fr 22px; align-items:center; gap:8px; margin:5px 0; }
+  .stop .spos { background:#0a0a09; border:1px solid var(--line); color:#a6a69e; border-radius:4px;
+    padding:3px 2px; font-size:11px; text-align:center; width:100%; box-sizing:border-box; }
+  .stop .scol { display:flex; align-items:center; gap:6px; }
+  .stop input[type=color] { width:26px; height:22px; padding:0; border:1px solid var(--line);
+    border-radius:4px; background:none; flex:0 0 auto; }
+  .stop .shex { flex:1; min-width:0; background:#0a0a09; border:1px solid var(--line); color:#a6a69e;
+    border-radius:4px; padding:3px 5px; font-size:11px; font-family:ui-monospace,monospace; text-transform:uppercase; box-sizing:border-box; }
+  .stop .x { cursor:pointer; color:var(--dim); text-align:center; border:1px solid var(--line);
+    border-radius:4px; padding:2px 0; font-size:14px; line-height:1; }
+  .stop .x:hover { color:#ff6b6b; border-color:#ff6b6b; }
+  .btn { background:#1c1c24; color:var(--txt); border:1px solid var(--line); border-radius:5px;
+    padding:6px 10px; cursor:pointer; font-size:12px; }
+  .btn:hover { border-color:var(--accent); }
+  .chip { padding:4px 9px; font-size:11px; border-radius:12px; }
+  .pchip { display:inline-flex; align-items:center; gap:6px; background:#1c1c24; border:1px solid var(--line);
+    border-radius:12px; font-size:11px; overflow:hidden; }
+  .pchip .pload { padding:4px 4px 4px 10px; cursor:pointer; }
+  .pchip .pload:hover { color:var(--accent); }
+  .pchip .pdel { padding:4px 8px 4px 4px; cursor:pointer; color:var(--dim); }
+  .pchip .pdel:hover { color:#ff6b6b; }
+  #presetName { flex:1; background:#0e0e12; color:var(--txt); border:1px solid var(--line);
+    border-radius:5px; padding:5px 7px; font-size:12px; }
+  .hint { color:var(--dim); font-size:11px; margin:-2px 0 8px; }
+  /* ===== Grainrad three-column layout override ===== */
+  html,body { background:#0b0b0a; color:#8a8a82; font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:12px; letter-spacing:.2px; }
+  #app { display:flex; height:100vh; width:100vw; }
+  #leftrail { width:234px; flex:none; border-right:1px solid #20201d; display:flex; flex-direction:column; padding:14px 0 0; }
+  #rightrail { width:302px; flex:none; border-left:1px solid #20201d; display:flex; flex-direction:column; }
+  #center { flex:1; min-width:0; display:flex; flex-direction:column; background:#060605; }
+  /* two-page mode switch */
+  #modebar { position:fixed; top:8px; left:50%; transform:translateX(-50%); z-index:1000;
+    display:flex; gap:2px; background:#141413; border:1px solid #2a2a26; border-radius:7px; padding:2px; }
+  #modebar button { font:inherit; font-size:11px; letter-spacing:.09em; text-transform:uppercase;
+    padding:4px 13px; border:none; background:transparent; color:#8a8a82; border-radius:5px; cursor:pointer; }
+  #modebar button:hover { color:#d8d8d1; }
+  #modebar button.on { background:#26261f; color:#d8d8d1; }
+  #thermal { display:none; }
+  body.mode-thermal #app { display:none; }
+  body.mode-thermal #thermal { display:flex; height:100vh; width:100vw; background:#060605; }
+  #thermLeft { width:190px; flex:none; border-right:1px solid #20201d; padding:14px 0 0; display:flex; flex-direction:column; }
+  #thermLeft .brand { padding:0 14px; }
+  #thermLeft .tseg { padding:0 14px; margin:16px 0 6px; font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:#56564f; }
+  #thermEffects { display:flex; flex-direction:column; }
+  .theff { text-align:left; font:inherit; font-size:12px; padding:8px 14px; background:transparent; border:none; border-left:2px solid transparent; color:#a6a69e; cursor:pointer; }
+  .theff:hover { background:#141413; color:#d8d8d1; }
+  .theff.on { border-left-color:#6b6bff; color:#cfe0ff; background:#141413; }
+  #thermStage { flex:1; min-width:0; display:flex; align-items:center; justify-content:center; }
+  .effcanvas { height:min(100%,133vw); max-width:100%; aspect-ratio:3/4; background:#000; border:1px solid #20201d; }
+  #thermPanel { width:302px; flex:none; border-left:1px solid #20201d; overflow-y:auto; padding:14px 14px 40px; }
+  #thermPanel .brand { font-size:13px; font-weight:600; color:#d8d8d1; letter-spacing:.06em; }
+  .tsec { border-top:1px solid #20201d; padding-top:10px; margin-top:12px; }
+  .tsec-h { display:flex; align-items:center; font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:#56564f; margin-bottom:8px; }
+  .th-sm { margin-left:auto; font:inherit; font-size:11px; padding:2px 8px; background:#141413; border:1px solid #2a2a26; color:#a6a69e; border-radius:5px; cursor:pointer; }
+  .th-sm:hover { border-color:#5a5a50; color:#d8d8d1; }
+  .th-sm.on { border-color:#6b6bff; color:#cfe0ff; }
+  #th_gbar, #f2_gbar { display:block; width:100%; height:26px; border:1px solid #2a2a26; border-radius:5px 5px 0 0; cursor:copy; }
+  #th_gstops, #f2_gstops { position:relative; height:18px; border:1px solid #2a2a26; border-top:none; border-radius:0 0 5px 5px; background:#0a0a09; }
+  .th-stop { position:absolute; top:2px; width:12px; height:12px; margin-left:-6px; border-radius:50%; border:2px solid #0a0a09; cursor:grab; box-shadow:0 0 0 1px #2a2a26; }
+  .th-stop.sel { box-shadow:0 0 0 2px #6b6bff; }
+  .th-grow { display:flex; gap:6px; align-items:center; margin-top:8px; }
+  .th-grow input[type=color] { width:34px; height:26px; border:1px solid #2a2a26; border-radius:5px; background:none; padding:1px; cursor:pointer; }
+  .th-grow .pos { font-family:ui-monospace,monospace; color:#56564f; width:46px; font-size:11px; }
+  .brand { color:#d8d8d1; font-size:13px; padding:0 16px 14px; letter-spacing:.5px; }
+  .rail-scroll { flex:1; overflow-y:auto; padding:2px 16px 24px; }
+  .rail-scroll::-webkit-scrollbar { width:8px; } .rail-scroll::-webkit-scrollbar-thumb { background:#26261f; border-radius:4px; }
+  .rail-foot { display:flex; gap:14px; color:#56564f; padding:13px 16px; border-top:1px solid #20201d; }
+  .rail-head { display:flex; justify-content:space-between; align-items:center; color:#d8d8d1; padding:15px 16px 12px; border-bottom:1px solid #20201d; }
+  .rail-reset { color:#56564f; cursor:pointer; } .rail-reset:hover { color:#a6a69e; }
+  .drop { display:block; border:1px dashed #2a2a26; border-radius:4px; padding:13px 8px; text-align:center; color:#56564f; line-height:1.8; cursor:pointer; margin:6px 0 4px; }
+  .drop:hover { border-color:#3a3a34; color:#7a7a72; }
+  .ctop { display:flex; align-items:center; justify-content:space-between; padding:12px 14px; }
+  .ctop .side { width:64px; color:#56564f; font-size:13px; display:flex; gap:13px; }
+  .ctop .cttl { display:flex; align-items:center; gap:8px; color:#a6a69e; }
+  .ctop .cttl .d { color:#cfcfc7; font-size:8px; } .ctop .cttl .rn { color:#56564f; }
+  #stage { position:relative; inset:auto; flex:1; min-height:0; padding:0; background:transparent; overflow:hidden; }
+  #glcanvas { display:block; width:100%; height:100%; }
+  #gradedit #gline { position:absolute; width:1px; background:rgba(255,255,255,.8); transform:translateX(-50%); }
+  #gradedit .ghandle { position:absolute; width:14px; height:14px; box-sizing:border-box; border:1.5px solid #fff; background:rgba(0,0,0,.25); transform:translate(-50%,-50%); cursor:ns-resize; pointer-events:auto; }
+  #gradedit .ghandle:hover { background:rgba(255,255,255,.25); }
+  .cbar { display:flex; align-items:center; justify-content:center; gap:10px; padding:9px 10px; color:#56564f; border-top:1px solid #20201d; }
+  #scrub { width:140px; }
+  #panels,#leftpresets { position:static; inset:auto; pointer-events:auto; z-index:auto; }
+  .panel { position:static; width:auto; background:none; border:none; border-bottom:1px solid #1b1b18; border-radius:0; box-shadow:none; backdrop-filter:none; display:block; }
+  .panel .pbtns { display:none; }
+  .phead { padding:12px 0 9px; border-bottom:none; cursor:pointer; gap:8px; }
+  .phead:before { content:'\2212'; color:#56564f; display:inline-block; width:11px; }
+  .panel.collapsed .phead:before { content:'+'; }
+  .panel.collapsed .pbody { display:none; }
+  .ptitle { font-weight:500; color:#d8d8d1; font-size:12px; }
+  .pbody { padding:0 0 10px; max-height:none; overflow:visible; }
+  .row label { color:#8a8a82; } .row .val { color:#a6a69e; }
+  .sub { color:#a6a69e; font-weight:500; } .seg { color:#56564f; }
+  .palhead { cursor:pointer; user-select:none; }
+  .palhead:before { content:'\25be'; display:inline-block; width:10px; font-size:9px; transition:transform .15s; }
+  .palhead.collapsed:before { transform:rotate(-90deg); }
+  .btn { background:#141413; color:#a6a69e; border-color:#2a2a26; }
+  .btn:hover { border-color:#5a5a50; color:#d8d8d1; }
+  select,#presetName,#srcText { background:#0a0a09 !important; border-color:#2a2a26 !important; color:#a6a69e !important; }
+  /* muted grey controls — thin line + dot slider (matches Grainrad) */
+  input[type=range] { -webkit-appearance:none; appearance:none; background:transparent; height:14px; cursor:pointer; }
+  input[type=range]::-webkit-slider-runnable-track { height:1px; background:#33332e; border-radius:1px; }
+  input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:9px; height:9px; margin-top:-4px; border-radius:50%; background:#c2c2ba; border:none; }
+  input[type=range]:hover::-webkit-slider-thumb { background:#e0e0d8; }
+  input[type=range]::-moz-range-track { height:1px; background:#33332e; border-radius:1px; }
+  input[type=range]::-moz-range-thumb { width:9px; height:9px; border:none; border-radius:50%; background:#c2c2ba; }
+  input[type=range]::-moz-range-progress { height:1px; background:#33332e; }
+  input[type=checkbox] { accent-color:#6f6f66; }
+  .toggle input[type=checkbox], .row input[type=checkbox] { accent-color:#6f6f66; }
+  .hint { color:#56564f; }
+  .pchip { background:#141413; border-color:#2a2a26; }
+</style>
+</head>
+<body>
+<div id="modebar">
+  <button id="modePattern" class="on">Pattern</button>
+  <button id="modeThermal">Thermal</button>
+</div>
+<div id="app">
+<aside id="leftrail">
+  <div class="brand">Wave Lab</div>
+  <div class="rail-scroll">
+    <div class="seg" style="margin-top:0">Input</div>
+    <div style="color:#56564f;margin-bottom:10px">Standby</div>
+    <div id="leftpresets">
+
+  <div class="panel" data-tab="presets"><div class="phead"><span class="ptitle">Presets</span>
+    <span class="pbtns"><span class="pbtn pin" title="Pin (keep open)">📌</span><span class="pbtn dock" title="Return to default position">⤢</span><span class="pbtn cls" title="Close">✕</span></span></div>
+    <div class="pbody">
+      <div style="display:flex;gap:6px;margin-bottom:12px">
+        <button class="btn" id="newBtn" style="flex:1">＋ New</button>
+        <button class="btn" id="srcViewBtn" style="flex:1" title="Toggle all effects off to see the strip">◐ Source</button>
+      </div>
+      <div class="seg">Showcase</div>
+      <div id="showcase" style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px"></div>
+      <div class="seg">Style to build from</div>
+      <div id="styles" style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:12px"></div>
+      <button class="btn" id="rndBtn" style="width:100%">🎲 Surprise me</button>
+      <label style="display:flex;align-items:center;gap:7px;margin:8px 0 2px;color:var(--dim);font-size:12px;cursor:pointer"><input type="checkbox" id="rndFx" checked style="accent-color:var(--accent)"> Include Post FX in random</label>
+      <label style="display:flex;align-items:center;gap:7px;margin:2px 0;color:var(--dim);font-size:12px;cursor:pointer"><input type="checkbox" id="fxBypass" style="accent-color:var(--accent)"> Preview without Post FX</label>
+      <div style="display:flex;gap:6px;margin-top:8px">
+        <input id="presetName" placeholder="name this look…" />
+        <button class="btn" id="saveBtn">Save</button>
+      </div>
+      <div id="presetList" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px"></div>
+      <button class="btn" id="copyBtn" style="width:100%;margin-top:10px">Copy settings</button>
+    </div></div>
+    </div>
+  </div>
+  <div class="rail-foot"><span>Follow</span><span>About</span><span>Changelog</span></div>
+</aside>
+
+<main id="center">
+  <div id="stage"><canvas id="glcanvas" width="1200" height="1200"></canvas>
+    <canvas id="fieldOverlay" style="position:absolute;inset:0;pointer-events:none;display:none"></canvas>
+    <div id="gradedit" style="position:absolute;inset:0;pointer-events:none;display:none">
+      <div id="gline"></div>
+      <div class="ghandle" id="ghTop"></div>
+      <div class="ghandle" id="ghBot"></div>
+    </div>
+  </div>
+  <div class="cbar">
+    <button class="btn" id="playBtn">⏸</button>
+    <input type="range" id="scrub" min="0" max="40" step="0.001" value="0" />
+    <button class="btn" id="replayBtn">↻ Replay</button>
+    <button class="btn" id="resetBtn">↺ Reset</button>
+  </div>
+</main>
+
+<aside id="rightrail">
+  <div class="rail-head"><span>Settings</span><span class="rail-reset" id="railReset">Reset</span></div>
+  <div class="rail-scroll"><div id="panels">
+
+  <div class="panel" data-tab="waves"><div class="phead"><span class="ptitle">Waves</span>
+    <span class="pbtns"><span class="pbtn pin" title="Pin">📌</span><span class="pbtn dock" title="Return to default position">⤢</span><span class="pbtn cls" title="Close">✕</span></span></div>
+    <div class="pbody">
+      <div class="sub">Wave 1 <span class="toggle"><input type="checkbox" id="w1on" checked>on</span></div>
+      <div id="w1body"></div>
+      <div class="sub">Wave 2 <span class="toggle"><input type="checkbox" id="w2on" checked>on</span></div>
+      <div id="w2body"></div>
+    </div></div>
+
+  <div class="panel" data-tab="symmetry"><div class="phead"><span class="ptitle">Symmetry</span>
+    <span class="pbtns"><span class="pbtn pin" title="Pin">📌</span><span class="pbtn dock" title="Return to default position">⤢</span><span class="pbtn cls" title="Close">✕</span></span></div>
+    <div class="pbody">
+      <div class="sub">Mirror <span class="toggle"><input type="checkbox" id="mon" checked>vert</span></div>
+      <div id="mbody"><div class="row"><label>Horiz fold</label><span></span><span class="toggle" style="margin:0"><input type="checkbox" id="mhon"></span></div></div>
+      <div class="sub">Kaleidoscope <span class="toggle"><input type="checkbox" id="kon">on</span></div>
+      <div id="kbody"></div>
+      <div class="sub">Warp mode</div>
+      <div class="row"><label>Radial</label><span></span><span class="toggle" style="margin:0"><input type="checkbox" id="radial"></span></div>
+      <div class="row"><label>Cross (2D)</label><span></span><span class="toggle" style="margin:0"><input type="checkbox" id="cross"></span></div>
+      <p class="hint">Radial = ripples from center. Cross = perpendicular copies (cymatics).</p>
+    </div></div>
+
+  <div class="panel" data-tab="source"><div class="phead"><span class="ptitle">Source</span>
+    <span class="pbtns"><span class="pbtn pin" title="Pin">📌</span><span class="pbtn dock" title="Return to default position">⤢</span><span class="pbtn cls" title="Close">✕</span></span></div>
+    <div class="pbody">
+      <div id="sbody"></div>
+      <div class="sub">Text <span class="toggle"><input type="checkbox" id="srcUse">use</span></div>
+      <div style="display:flex;gap:6px;margin-bottom:8px">
+        <input id="srcText" placeholder="type text…" style="flex:1;background:#0e0e12;color:var(--txt);border:1px solid var(--line);border-radius:5px;padding:5px 7px;font-size:12px" />
+        <button class="btn" id="srcTextBtn">Set</button>
+      </div>
+      <p class="hint">Warps typed text instead of the gradient strip.</p>
+      <div class="sub">Pixel sort (source bake) <span class="toggle"><input type="checkbox" id="psort_on">on</span></div>
+      <div class="row"><label>Thresh low</label><input type="range" id="psort_low" min="0" max="1" step="0.01" value="0.16"><span class="val" id="psort_lowV">0.16</span></div>
+      <div class="row"><label>Thresh high</label><input type="range" id="psort_high" min="0" max="1" step="0.01" value="0.86"><span class="val" id="psort_highV">0.86</span></div>
+      <div class="row"><label>Drip down</label><span></span><span class="toggle" style="margin:0"><input type="checkbox" id="psort_down" checked></span></div>
+      <p class="hint">Bakes a true vertical pixel sort into the source. Turn the waves off for clean drips.</p>
+    </div></div>
+
+  <div class="panel" data-tab="color"><div class="phead"><span class="ptitle">Color</span>
+    <span class="pbtns"><span class="pbtn pin" title="Pin">📌</span><span class="pbtn dock" title="Return to default position">⤢</span><span class="pbtn cls" title="Close">✕</span></span></div>
+    <div class="pbody">
+      <div class="sub">Colorama <span class="toggle"><input type="checkbox" id="con" checked>on</span></div>
+      <div class="seg palhead" id="palHead">Palettes</div>
+      <div id="palettes" style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px"></div>
+      <div id="gradWrap"><div id="gradBar"></div><div id="gradHandles"></div></div>
+      <div class="row" style="margin-top:6px"><label>Mirror loop</label><span></span><span class="toggle" style="margin:0"><input type="checkbox" id="mirror"></span></div>
+      <div class="stopshead"><span class="seg" style="margin:0">Stops</span><span class="sbtns"><span class="sbtn" id="revStops" title="Reverse stops">⇄</span><span class="sbtn" id="addStop" title="Add stop">+</span></span></div>
+      <div id="stops"></div>
+      <div class="row" style="margin-top:10px"><label>Cycles</label><input type="range" id="cycles" min="0.25" max="10" step="0.25" value="1"><span class="val" id="cyclesV">1</span></div>
+      <div class="row"><label>Color flow</label><input type="range" id="cps" min="0" max="0.5" step="0.005" value="0"><span class="val" id="cpsV">0.00</span></div>
+      <div class="sub">Posterise <span class="toggle"><input type="checkbox" id="post_on">on</span></div>
+      <div class="row"><label>Bands</label><input type="range" id="post_lv" min="2" max="30" step="1" value="16"><span class="val" id="post_lvV">16</span></div>
+      <p class="hint">Cycles repeat the ramp; Posterise makes hard banded scanlines.</p>
+    </div></div>
+
+  <div class="panel" data-tab="field"><div class="phead"><span class="ptitle">Field</span>
+    <span class="pbtns"><span class="pbtn pin" title="Pin">📌</span><span class="pbtn dock" title="Return to default position">⤢</span><span class="pbtn cls" title="Close">✕</span></span></div>
+    <div class="pbody">
+      <div class="sub">Shape <span class="toggle"><input type="checkbox" id="field_on">on</span></div>
+      <div id="fieldShapes" style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:6px"></div>
+      <label class="btn" style="display:block;text-align:center;cursor:pointer;margin-bottom:6px">Upload SVG<input type="file" id="fieldSvg" accept=".svg,image/svg+xml" style="display:none"></label>
+      <button class="btn" id="fieldDrawBtn" style="display:block;width:100%;margin-bottom:8px">Draw shape</button>
+      <div class="row"><label>Outline</label><span></span><span class="toggle" style="margin:0"><input type="checkbox" id="f_outline"></span></div>
+      <div class="row"><label>Thickness</label><input type="range" id="f_thick" min="1" max="40" step="1" value="9"><span class="val" id="f_thickV">9</span></div>
+      <div class="row"><label>Edge soft</label><input type="range" id="f_blur" min="0" max="40" step="1" value="4"><span class="val" id="f_blurV">4</span></div>
+      <div class="row"><label>Size</label><input type="range" id="f_size" min="0.1" max="1.2" step="0.02" value="0.6"><span class="val" id="f_sizeV">0.60</span></div>
+      <p class="hint" style="margin:2px 0 6px">Drag on the canvas to move the shape.</p>
+      <div class="row"><label>Rotation</label><input type="range" id="f_rot" min="0" max="360" step="1" value="0"><span class="val" id="f_rotV">0</span></div>
+      <div class="sub">Gradient mask</div>
+      <div class="row"><label>Type</label><select id="fm_type" style="grid-column:2/4"><option value="0">none</option><option value="1">linear</option><option value="2">radial</option></select></div>
+      <div class="row"><label>Rotation</label><input type="range" id="fm_rot" min="0" max="360" step="1" value="0"><span class="val" id="fm_rotV">0</span></div>
+      <div class="row"><label>Softness</label><input type="range" id="fm_soft" min="0" max="1" step="0.02" value="0.6"><span class="val" id="fm_softV">0.60</span></div>
+      <div class="row"><label>Size</label><input type="range" id="fm_size" min="0.2" max="2" step="0.02" value="1"><span class="val" id="fm_sizeV">1.00</span></div>
+      <div class="row"><label>Invert</label><span></span><span class="toggle" style="margin:0"><input type="checkbox" id="fm_invert"></span></div>
+      <div class="row"><label>Show mask</label><span></span><span class="toggle" style="margin:0"><input type="checkbox" id="fm_show"></span></div>
+      <div class="sub">Field drives — distort</div>
+      <div class="row"><label>Warp</label><input type="range" id="field_warp" min="0" max="1" step="0.02" value="0.45"><span class="val" id="field_warpV">0.45</span></div>
+      <div class="row"><label>Refract</label><input type="range" id="field_refract" min="0" max="1" step="0.02" value="0"><span class="val" id="field_refractV">0.00</span></div>
+      <div class="row"><label>Glitch</label><input type="range" id="field_glitch" min="0" max="1" step="0.02" value="0"><span class="val" id="field_glitchV">0.00</span></div>
+      <div class="sub">Field drives — timing</div>
+      <div class="row"><label>Time offset</label><input type="range" id="field_time" min="-1" max="1" step="0.02" value="0"><span class="val" id="field_timeV">0.00</span></div>
+      <div class="sub">Field drives — color</div>
+      <div class="row"><label>Brighten</label><input type="range" id="field_mod" min="0" max="1" step="0.02" value="0.6"><span class="val" id="field_modV">0.60</span></div>
+      <div class="row"><label>Hue shift</label><input type="range" id="field_hue" min="-1" max="1" step="0.02" value="0"><span class="val" id="field_hueV">0.00</span></div>
+      <div class="row"><label>Saturation</label><input type="range" id="field_sat" min="-1" max="1" step="0.02" value="0"><span class="val" id="field_satV">0.00</span></div>
+      <div class="row"><label>Color cycle</label><input type="range" id="field_cycle" min="-1" max="1" step="0.02" value="0"><span class="val" id="field_cycleV">0.00</span></div>
+      <div class="row"><label>Invert</label><input type="range" id="field_invert" min="0" max="1" step="0.02" value="0"><span class="val" id="field_invertV">0.00</span></div>
+      <p class="hint">Insert a shape, mask it with a gradient, then dial what the mask drives. Signed sliders (time / hue / saturation / cycle) go both directions from 0; all default to off, so they only kick in where the mask is bright.</p>
+    </div></div>
+
+  <div class="panel" data-tab="postfx"><div class="phead"><span class="ptitle">Post FX</span>
+    <span class="pbtns"><span class="pbtn pin" title="Pin">📌</span><span class="pbtn dock" title="Return to default position">⤢</span><span class="pbtn cls" title="Close">✕</span></span></div>
+    <div class="pbody">
+      <p class="hint" style="margin-top:0">Effects applied on top of the whole animation.</p>
+      <div class="seg">Edge</div>
+      <div class="sub">Edge detection <span class="toggle"><input type="checkbox" id="edge_on">on</span></div>
+      <div class="row"><label>Strength</label><input type="range" id="edge_amt" min="0.5" max="12" step="0.5" value="4"><span class="val" id="edge_amtV">4</span></div>
+      <div class="seg">Texture</div>
+      <div class="sub">Grain <span class="toggle"><input type="checkbox" id="grain_on">on</span></div>
+      <div class="row"><label>Amount</label><input type="range" id="grain" min="0" max="0.5" step="0.01" value="0.10"><span class="val" id="grainV">0.10</span></div>
+      <div class="sub">Pixelate <span class="toggle"><input type="checkbox" id="pix_on">on</span></div>
+      <div class="row"><label>Block</label><input type="range" id="pix" min="2" max="60" step="1" value="12"><span class="val" id="pixV">12</span></div>
+      <div class="seg">Chromatic</div>
+      <div class="sub">Chromatic aberration <span class="toggle"><input type="checkbox" id="ca_on">on</span></div>
+      <div class="row"><label>Directional</label><input type="range" id="ca_dir" min="0" max="0.02" step="0.0005" value="0.004"><span class="val" id="ca_dirV">0.004</span></div>
+      <div class="row"><label>Radial</label><input type="range" id="ca_radial" min="0" max="0.08" step="0.001" value="0.028"><span class="val" id="ca_radialV">0.028</span></div>
+      <div class="row"><label>Falloff</label><input type="range" id="ca_fall" min="0.5" max="4" step="0.1" value="2.2"><span class="val" id="ca_fallV">2.2</span></div>
+      <div class="seg">Stylize</div>
+      <div class="sub">Film grade + vignette <span class="toggle"><input type="checkbox" id="grade_on">on</span></div>
+      <div class="row"><label>Brightness</label><input type="range" id="grade_gain" min="0.4" max="1.4" step="0.01" value="0.98"><span class="val" id="grade_gainV">0.98</span></div>
+      <div class="row"><label>Crush</label><input type="range" id="grade_crush" min="0" max="1" step="0.01" value="0.5"><span class="val" id="grade_crushV">0.50</span></div>
+      <div class="row"><label>Saturation</label><input type="range" id="grade_sat" min="0" max="1.5" step="0.01" value="0.55"><span class="val" id="grade_satV">0.55</span></div>
+      <div class="row"><label>Cool tint</label><input type="range" id="grade_tint" min="0" max="1" step="0.01" value="0.45"><span class="val" id="grade_tintV">0.45</span></div>
+      <div class="row"><label>Vignette</label><input type="range" id="vig" min="0" max="1" step="0.01" value="0.55"><span class="val" id="vigV">0.55</span></div>
+      <div class="row"><label>Vig radius</label><input type="range" id="vig_rad" min="0" max="0.7" step="0.01" value="0.34"><span class="val" id="vig_radV">0.34</span></div>
+      <div class="seg">Halftone / dots</div>
+      <div class="sub">Halftone <span class="toggle"><input type="checkbox" id="half_on">on</span></div>
+      <div class="row"><label>Cell size</label><input type="range" id="half_scale" min="3" max="30" step="1" value="8"><span class="val" id="half_scaleV">8</span></div>
+      <div class="row"><label>Screen angle</label><input type="range" id="half_ang" min="0" max="90" step="1" value="15"><span class="val" id="half_angV">15°</span></div>
+      <div class="sub">Dots <span class="toggle"><input type="checkbox" id="dots_on">on</span></div>
+      <div class="row"><label>Spacing</label><input type="range" id="dots_space" min="3" max="30" step="1" value="8"><span class="val" id="dots_spaceV">8</span></div>
+      <div class="row"><label>Dot size</label><input type="range" id="dots_scale" min="0.2" max="1.5" step="0.05" value="0.9"><span class="val" id="dots_scaleV">0.90</span></div>
+      <div class="sub">Dot dither <span class="toggle"><input type="checkbox" id="dot_on">on</span></div>
+      <div class="row"><label>Dot shape</label><select id="dot_shape" style="grid-column:2/4"><option value="0">circle</option><option value="1">square</option><option value="2">triangle</option><option value="3">plus</option></select></div>
+      <div class="row"><label>Spacing</label><input type="range" id="dot_space" min="3" max="24" step="1" value="6"><span class="val" id="dot_spaceV">6</span></div>
+      <div class="row"><label>Dot fill</label><input type="range" id="dot_scale" min="0.3" max="1.4" step="0.05" value="0.95"><span class="val" id="dot_scaleV">0.95</span></div>
+      <div class="row"><label>Contrast</label><input type="range" id="dot_gamma" min="0.3" max="3" step="0.1" value="1"><span class="val" id="dot_gammaV">1.0</span></div>
+      <div class="row"><label>Tint by effect</label><span></span><span class="toggle" style="margin:0"><input type="checkbox" id="dot_tint" checked></span></div>
+      <div class="row"><label>Dot color</label><input type="color" id="dot_col" value="#dbe8ff" style="height:24px;width:100%;border:1px solid var(--line);border-radius:4px;background:none;padding:0;cursor:pointer"><span></span></div>
+      <div class="row"><label>Dot bg</label><input type="color" id="dot_bg" value="#06060a" style="height:24px;width:100%;border:1px solid var(--line);border-radius:4px;background:none;padding:0;cursor:pointer"><span></span></div>
+    </div></div>
+
+
+  <div class="panel" data-tab="export"><div class="phead"><span class="ptitle">Loop &amp; Export</span>
+    <span class="pbtns"><span class="pbtn pin" title="Pin">📌</span><span class="pbtn dock" title="Return to default position">⤢</span><span class="pbtn cls" title="Close">✕</span></span></div>
+    <div class="pbody">
+      <div class="row"><label>Seamless</label><span></span><span class="toggle" style="margin:0"><input type="checkbox" id="seamless"></span></div>
+      <div class="row"><label>Loop len</label><input type="range" id="loopLen" min="1" max="12" step="0.5" value="4"><span class="val" id="loopLenV">4.0</span></div>
+      <button class="btn" id="recBtn" style="width:100%;margin-top:4px">⏺ Record loop (WebM)</button>
+      <p class="hint">Seamless snaps wave speeds to loop perfectly. Record exports one loop as WebM.</p>
+    </div></div>
+
+</div></div>
+</aside>
+</div>
+
+<div id="thermal">
+  <aside id="thermLeft">
+    <div class="brand">Thermal</div>
+    <div class="tseg">Effects</div>
+    <div id="thermEffects">
+      <button class="theff on" data-eff="flow1">Flow 1</button>
+      <button class="theff" data-eff="flow2">Flow 2</button>
+    </div>
+  </aside>
+  <div id="thermStage">
+    <canvas id="flow1Canvas" class="effcanvas" data-eff="flow1"></canvas>
+    <canvas id="flow2Canvas" class="effcanvas" data-eff="flow2" hidden></canvas>
+  </div>
+  <aside id="thermPanel">
+    <div class="effpanel" data-eff="flow1">
+    <div class="brand">Flow 1</div>
+    <div class="tsec">
+      <div class="tsec-h">Gradient <button class="th-sm" id="th_delStop">− stop</button></div>
+      <canvas id="th_gbar" width="272" height="26"></canvas>
+      <div id="th_gstops"></div>
+      <div class="th-grow"><input type="color" id="th_stopCol" value="#e8a04c"><span class="pos" id="th_stopPos">–</span><span class="hint" style="margin:0">loops · dbl-click to add</span></div>
+      <div class="row"><label>Band cycles</label><input type="range" id="th_cycles" min="1" max="5" step="1" value="1"><span class="val" id="th_cyclesV">1</span></div>
+    </div>
+    <div class="tsec">
+      <div class="tsec-h">Motion <button class="th-sm" id="th_play">Pause</button></div>
+      <div class="row"><label>Drift</label><input type="range" id="th_speed" min="-0.6" max="0.6" step="0.002" value="0.09"><span class="val" id="th_speedV">0.090</span></div>
+      <div class="row"><label>Phase</label><input type="range" id="th_phase" min="0" max="1" step="0.005" value="0"><span class="val" id="th_phaseV">0.000</span></div>
+      <div class="row"><label>Core lock</label><input type="range" id="th_lock" min="0" max="1" step="0.01" value="0"><span class="val" id="th_lockV">0.00</span></div>
+      <p class="hint">Lock 0 = whole image loops seamlessly. Lock &gt; 0 = core pinned, drift becomes back-and-forth.</p>
+    </div>
+    <div class="tsec">
+      <div class="tsec-h">Look</div>
+      <div class="row"><label>Blur</label><input type="range" id="th_soft" min="0.4" max="3" step="0.02" value="1"><span class="val" id="th_softV">1.00</span></div>
+      <div class="row"><label>Bar glow</label><input type="range" id="th_bars" min="0" max="1" step="0.01" value="0.5"><span class="val" id="th_barsV">0.50</span></div>
+      <div class="row"><label>Base flare</label><input type="range" id="th_base" min="0" max="1" step="0.01" value="0.45"><span class="val" id="th_baseV">0.45</span></div>
+    </div>
+    <div class="tsec">
+      <div class="tsec-h">Output</div>
+      <div style="display:flex;gap:6px;margin-top:4px"><button class="btn" id="th_export">Export PNG</button><button class="btn" id="th_reset">Reset</button></div>
+    </div>
+    </div><!-- /flow1 effpanel -->
+    <div class="effpanel" data-eff="flow2" hidden>
+      <div class="brand">Flow 2</div>
+      <div class="tsec">
+        <div class="tsec-h">Source</div>
+        <div style="display:flex;gap:6px"><input id="f2_text" value="A" style="flex:1;background:#0e0e12;color:#d8d8d1;border:1px solid #2a2a26;border-radius:5px;padding:5px 7px;font-size:12px"><button class="th-sm" id="f2_setText" style="margin-left:0">Set</button></div>
+        <p class="hint">White text on black — the shape to blur &amp; colour.</p>
+      </div>
+      <div class="tsec">
+        <div class="tsec-h">Blur map <button class="th-sm" id="f2_showMap">Show</button></div>
+        <div class="row"><label>Blur amount</label><input type="range" id="f2_blurMax" min="0" max="1" step="0.02" value="0.7"><span class="val" id="f2_blurMaxV">0.70</span></div>
+        <div class="row"><label>Blend</label><input type="range" id="f2_blend" min="1" max="6" step="0.1" value="2.5"><span class="val" id="f2_blendV">2.5</span></div>
+        <div class="row"><label>Pins</label><span></span><span></span></div>
+        <div id="f2_pins" style="display:flex;gap:5px;margin-top:2px"></div>
+        <p class="hint">Show the map, then drag the 4 pins on the canvas. White = blur, black = sharp.</p>
+      </div>
+      <div class="tsec">
+        <div class="tsec-h">Colorama <span style="margin-left:auto;display:flex;gap:5px"><button class="th-sm" id="f2_delStop" style="margin-left:0">− stop</button><button class="th-sm" id="f2_play" style="margin-left:0">Pause</button></span></div>
+        <canvas id="f2_gbar" width="272" height="26"></canvas>
+        <div id="f2_gstops"></div>
+        <div class="th-grow"><input type="color" id="f2_stopCol" value="#ff8a00"><span class="pos" id="f2_stopPos">–</span><span class="hint" style="margin:0">loops · dbl-click to add</span></div>
+        <div class="row"><label>Cycles</label><input type="range" id="f2_cycles" min="1" max="5" step="1" value="1"><span class="val" id="f2_cyclesV">1</span></div>
+        <div class="row"><label>Drift</label><input type="range" id="f2_speed" min="-0.6" max="0.6" step="0.002" value="0.06"><span class="val" id="f2_speedV">0.060</span></div>
+        <div class="row"><label>Phase</label><input type="range" id="f2_phase" min="0" max="1" step="0.005" value="0"><span class="val" id="f2_phaseV">0.000</span></div>
+      </div>
+      <div class="tsec">
+        <div class="tsec-h">Output</div>
+        <div style="display:flex;gap:6px;margin-top:4px"><button class="btn" id="f2_export">Export PNG</button><button class="btn" id="f2_reset">Reset</button></div>
+      </div>
+    </div><!-- /flow2 effpanel -->
+  </aside>
+</div>
+
+<script>
+const PRESET = () => ({
+  w1on:true, w1h:206, w1w:446, w1d:180, w1s:0.95, w1t:0,
+  w2on:true, w2h:119, w2w:100, w2d:180, w2s:0.7, w2t:0,
+  mon:true, mhon:false, ma:0, mcx:600, mcy:600,
+  kon:false, kseg:6, krot:0,
+  radial:false, cross:false, srcMode:0,
+  seamless:false, loopLen:4,
+  blur:153, stripW:379, gradHalf:775, gradCenter:0.5,
+  con:true, mirror:false, cycles:1, cps:0, gspeed:0.39,
+  grain_on:false, grain:0.10, pix_on:false, pix:12,
+  post_on:false, post_lv:16,
+  psort_on:false, psort_low:0.16, psort_high:0.86, psort_down:true,
+  half_on:false, half_scale:8, half_ang:15, dots_on:false, dots_space:8, dots_scale:0.9, edge_on:false, edge_amt:4,
+  ca_on:false, ca_dir:0.004, ca_radial:0.028, ca_fall:2.2,
+  grade_on:false, grade_gain:0.98, grade_crush:0.5, grade_sat:0.55, grade_tint:0.45, vig:0.55, vig_rad:0.34,
+  dot_on:false, dot_space:6, dot_scale:0.95, dot_gamma:1.0, dot_shape:0, dot_tint:true, dot_col:'#dbe8ff', dot_bg:'#06060a',
+  field_on:false, field_warp:0.45, field_mod:0.6,
+  field_time:0, field_hue:0, field_glitch:0, field_refract:0, field_cycle:0, field_invert:0, field_sat:0,
+  f_outline:false, f_thick:9, f_blur:4, f_size:0.6, f_px:0.5, f_py:0.5, f_rot:0,
+  fm_type:0, fm_rot:0, fm_soft:0.6, fm_size:1.0, fm_invert:false, fm_show:false,
+});
+let P = PRESET();
+const DEFAULT_STOPS = [
+  {pos:0.00, color:'#020210'},
+  {pos:0.30, color:'#1e1ec8'},
+  {pos:0.55, color:'#2828ff'},
+  {pos:0.78, color:'#7d7dff'},
+  {pos:0.92, color:'#dcdcff'},
+  {pos:1.00, color:'#ffffff'},
+];
+let stops = DEFAULT_STOPS.map(s=>({...s}));
+const PALETTES = {
+  Ocean: DEFAULT_STOPS,
+  Chrome: [
+    {pos:0.00,color:'#20242c'},{pos:0.15,color:'#aeb6c4'},{pos:0.32,color:'#4a505e'},
+    {pos:0.50,color:'#ffffff'},{pos:0.64,color:'#6b7283'},{pos:0.80,color:'#e6ebf3'},
+    {pos:0.90,color:'#3c424e'},{pos:1.00,color:'#f4f7fb'},
+  ],
+  Aurora: [
+    {pos:0.00,color:'#00060e'},{pos:0.25,color:'#013a2e'},{pos:0.45,color:'#10b86a'},
+    {pos:0.62,color:'#28ffb0'},{pos:0.78,color:'#34d6ff'},{pos:0.90,color:'#6f6bff'},
+    {pos:1.00,color:'#c86bff'},
+  ],
+  Fire: [
+    {pos:0.00,color:'#000000'},{pos:0.22,color:'#340016'},{pos:0.42,color:'#b3122a'},
+    {pos:0.60,color:'#ff5a1f'},{pos:0.76,color:'#ffac33'},{pos:0.90,color:'#ffe79a'},
+    {pos:1.00,color:'#ffffff'},
+  ],
+  Sunset: [
+    {pos:0.00,color:'#0a0420'},{pos:0.30,color:'#3b1a6b'},{pos:0.50,color:'#b13a8e'},
+    {pos:0.70,color:'#ff6f6f'},{pos:0.85,color:'#ffb877'},{pos:1.00,color:'#fff0c9'},
+  ],
+  Ink: [ {pos:0.00,color:'#000000'},{pos:1.00,color:'#ffffff'} ],
+  Neon: [
+    {pos:0.00,color:'#12000a'},{pos:0.32,color:'#5e0018'},{pos:0.58,color:'#c30040'},
+    {pos:0.80,color:'#ff1aa8'},{pos:1.00,color:'#ff8fd6'},
+  ],
+  Vaporwave: [
+    {pos:0.00,color:'#1a0633'},{pos:0.28,color:'#7b2ff7'},{pos:0.52,color:'#f72f9a'},
+    {pos:0.72,color:'#ff6ad5'},{pos:0.86,color:'#26d6e6'},{pos:1.00,color:'#c9fffb'},
+  ],
+  Cyberpunk: [
+    {pos:0.00,color:'#05010d'},{pos:0.30,color:'#ff007a'},{pos:0.55,color:'#00e5ff'},
+    {pos:0.78,color:'#fbff12'},{pos:1.00,color:'#ffffff'},
+  ],
+  Matrix: [
+    {pos:0.00,color:'#000000'},{pos:0.35,color:'#003b00'},{pos:0.60,color:'#00b800'},
+    {pos:0.82,color:'#39ff14'},{pos:1.00,color:'#c7ffb8'},
+  ],
+  Toxic: [
+    {pos:0.00,color:'#0a0f00'},{pos:0.28,color:'#1f5d00'},{pos:0.52,color:'#7fd400'},
+    {pos:0.74,color:'#c6ff00'},{pos:0.90,color:'#eaff7a'},{pos:1.00,color:'#ffffff'},
+  ],
+  Infrared: [
+    {pos:0.00,color:'#000000'},{pos:0.20,color:'#2d0a52'},{pos:0.40,color:'#b5179e'},
+    {pos:0.58,color:'#e63100'},{pos:0.74,color:'#ff9e00'},{pos:0.88,color:'#ffe600'},
+    {pos:1.00,color:'#ffffff'},
+  ],
+  Spectrum: [
+    {pos:0.00,color:'#6a00f4'},{pos:0.18,color:'#0077ff'},{pos:0.36,color:'#00d4a0'},
+    {pos:0.54,color:'#5cff00'},{pos:0.70,color:'#ffe600'},{pos:0.85,color:'#ff6a00'},
+    {pos:1.00,color:'#ff0040'},
+  ],
+  Sepia: [
+    {pos:0.00,color:'#1a0f08'},{pos:0.30,color:'#5a3a1e'},{pos:0.55,color:'#9c6b3e'},
+    {pos:0.78,color:'#cda06a'},{pos:0.92,color:'#ecd8b4'},{pos:1.00,color:'#fbf3e2'},
+  ],
+  Ice: [
+    {pos:0.00,color:'#02101f'},{pos:0.32,color:'#0d4a73'},{pos:0.56,color:'#3b9fd1'},
+    {pos:0.78,color:'#a5e3ff'},{pos:1.00,color:'#ffffff'},
+  ],
+  Mint: [
+    {pos:0.00,color:'#04150f'},{pos:0.32,color:'#13503c'},{pos:0.56,color:'#3fae84'},
+    {pos:0.78,color:'#9be8c4'},{pos:1.00,color:'#eafff5'},
+  ],
+  Gold: [
+    {pos:0.00,color:'#0c0700'},{pos:0.30,color:'#5c3d05'},{pos:0.54,color:'#b8860b'},
+    {pos:0.74,color:'#f0c33c'},{pos:0.90,color:'#ffe89a'},{pos:1.00,color:'#fffae0'},
+  ],
+  Ultraviolet: [
+    {pos:0.00,color:'#05000f'},{pos:0.30,color:'#2e0a6b'},{pos:0.54,color:'#6a1bd1'},
+    {pos:0.74,color:'#a55cff'},{pos:0.90,color:'#d9b8ff'},{pos:1.00,color:'#ffffff'},
+  ],
+  Sakura: [
+    {pos:0.00,color:'#2b0a1e'},{pos:0.30,color:'#7d2b56'},{pos:0.54,color:'#d65b95'},
+    {pos:0.74,color:'#ff9ec4'},{pos:0.90,color:'#ffd6e6'},{pos:1.00,color:'#fff5f9'},
+  ],
+  Autumn: [
+    {pos:0.00,color:'#160a04'},{pos:0.28,color:'#6e2207'},{pos:0.50,color:'#b8460e'},
+    {pos:0.70,color:'#e87a1c'},{pos:0.86,color:'#f4b740'},{pos:1.00,color:'#ffe9b0'},
+  ],
+};
+
+// ---------- WebGL ----------
+const canvas = document.getElementById('glcanvas');
+const gl = canvas.getContext('webgl', {preserveDrawingBuffer:true});
+if(!gl){ document.body.innerHTML = '<p style="padding:20px">WebGL not available.</p>'; }
+
+const VS = `attribute vec2 a_pos; void main(){ gl_Position = vec4(a_pos,0.0,1.0); }`;
+const FS = `
+precision highp float;
+uniform vec2  u_res;
+uniform float u_time;
+uniform float u_stripW, u_gradHalf, u_blur, u_gradCenter;
+uniform bool  u_w1on; uniform float u_w1h,u_w1w,u_w1d,u_w1s; uniform int u_w1t;
+uniform bool  u_w2on; uniform float u_w2h,u_w2w,u_w2d,u_w2s; uniform int u_w2t;
+uniform bool  u_mon, u_mhon; uniform vec2 u_mc; uniform float u_ma;
+uniform bool  u_kon; uniform float u_kseg, u_krot;
+uniform bool  u_radial, u_cross; uniform int u_srcMode; uniform sampler2D u_srcTex;
+uniform bool  u_con; uniform float u_cycles, u_cphase; uniform sampler2D u_lut;
+uniform bool  u_post_on; uniform float u_post_lv;
+uniform bool  u_field_on; uniform sampler2D u_fieldTex; uniform float u_field_warp, u_field_mod;
+uniform float u_field_time, u_field_hue, u_field_glitch, u_field_refract, u_field_cycle, u_field_invert, u_field_sat;
+
+const float TAU = 6.28318530718;
+
+float waveFn(int t, float c){
+  float f = fract(c);
+  if(t==0){ // semicircle: row of half-circle scallops (rounded crest, cusped trough)
+    float xx = 2.0*f - 1.0;
+    return (sqrt(max(0.0, 1.0 - xx*xx)) - 0.5) * 2.0; // [-1..1], cusp at trough
+  } else if(t==1){ return sin(c*TAU); }              // sine
+  else if(t==2){ return 4.0*abs(f-0.5) - 1.0; }       // triangle
+  else if(t==3){ return f < 0.5 ? 1.0 : -1.0; }       // square
+  return 2.0*f - 1.0;                                 // sawtooth
+}
+
+// soft (pre-blurred) gradient strip, luminance 0..1
+float sourceLum(vec2 p){
+  if(u_srcMode == 1){               // image / text source (blur is pre-applied to the texture)
+    vec2 uv = vec2(p.x/u_res.x, p.y/u_res.y);
+    vec3 c = texture2D(u_srcTex, uv).rgb;
+    return dot(c, vec3(0.299,0.587,0.114));
+  }
+  float r = max(u_blur, 0.5);
+  float dxv = abs(p.x - u_res.x*0.5);
+  float hprof = 1.0 - smoothstep(u_stripW*0.5 - r, u_stripW*0.5 + r, dxv);
+  float vy = abs(p.y - u_gradCenter);
+  float vgrad = clamp(1.0 - vy/u_gradHalf, 0.0, 1.0);
+  // soften the gradient peak by the blur radius (rounds the white band)
+  vgrad = smoothstep(0.0, 1.0, vgrad);
+  return hprof * vgrad;
+}
+
+vec2 fold(vec2 q, float angDeg){
+  vec2 n = vec2(cos(radians(angDeg)), sin(radians(angDeg)));
+  float dd = dot(q - u_mc, n);
+  return q - n*(dd + abs(dd));   // keep negative side, mirror positive onto it
+}
+
+vec2 kaleido(vec2 q, float segs, float rot){
+  vec2 d = q - u_mc;
+  float r = length(d);
+  float a = atan(d.y, d.x) - radians(rot);
+  float seg = TAU / max(segs, 1.0);
+  a = mod(a, seg);
+  a = abs(a - seg*0.5);        // mirror within each wedge
+  a += radians(rot);
+  return u_mc + r*vec2(cos(a), sin(a));
+}
+
+vec2 waveDisp(vec2 q, float h, float w, float d, float s, int t, float te){
+  if(u_radial){                     // waves ripple outward from center
+    vec2 rel = q - u_mc; float r = length(rel);
+    vec2 rdir = r > 0.001 ? rel/r : vec2(0.0);
+    float c = r/max(w,1.0) - s*te;
+    return h * waveFn(t, c) * rdir;
+  }
+  float a = radians(d);
+  vec2 dir  = vec2(cos(a), sin(a));
+  vec2 perp = vec2(-sin(a), cos(a));
+  // AE "Wave Width" = span of one scallop (one period)
+  float c = dot(q - u_mc, perp)/max(w,1.0) - s*te;
+  return h * waveFn(t, c) * dir;
+}
+
+// gradient of the field mask in screen px (points toward brighter mask) — drives Refract
+vec2 fgrad(vec2 pp){
+  vec2 e = vec2(2.0, 0.0);
+  float fx = texture2D(u_fieldTex, vec2((pp.x+e.x)/u_res.x, pp.y/u_res.y)).r
+           - texture2D(u_fieldTex, vec2((pp.x-e.x)/u_res.x, pp.y/u_res.y)).r;
+  float fy = texture2D(u_fieldTex, vec2(pp.x/u_res.x, (pp.y+e.x)/u_res.y)).r
+           - texture2D(u_fieldTex, vec2(pp.x/u_res.x, (pp.y-e.x)/u_res.y)).r;
+  return vec2(fx, fy);
+}
+
+// rotate hue around the gray axis (Rodrigues rotation), a in radians — drives Hue shift
+vec3 hueRot(vec3 c, float a){
+  const vec3 k = vec3(0.57735);
+  float ca = cos(a);
+  return c*ca + cross(k, c)*sin(a) + k*dot(k, c)*(1.0 - ca);
+}
+
+void main(){
+  vec2 p = vec2(gl_FragCoord.x, u_res.y - gl_FragCoord.y);   // top-left origin
+  float fv = u_field_on ? texture2D(u_fieldTex, vec2(p.x/u_res.x, p.y/u_res.y)).r : 0.0;
+  vec2 q = p;
+  if(u_mon)  q = fold(q, u_ma);
+  if(u_mhon) q = fold(q, u_ma + 90.0);
+  if(u_kon)  q = kaleido(q, u_kseg, u_krot);
+
+  // Time offset: animation runs ahead/behind inside the masked region
+  float te = u_time + (u_field_on ? fv * u_field_time * 3.0 : 0.0);
+
+  vec2 disp = vec2(0.0);
+  if(u_w1on) disp += waveDisp(q, u_w1h, u_w1w, u_w1d, u_w1s, u_w1t, te);
+  if(u_w2on) disp += waveDisp(q, u_w2h, u_w2w, u_w2d, u_w2s, u_w2t, te);
+  if(u_cross){                       // perpendicular copies → 2D / cymatics grid
+    if(u_w1on) disp += waveDisp(q, u_w1h, u_w1w, u_w1d+90.0, u_w1s, u_w1t, te);
+    if(u_w2on) disp += waveDisp(q, u_w2h, u_w2w, u_w2d+90.0, u_w2s, u_w2t, te);
+  }
+
+  if(u_field_on){
+    disp += vec2(0.0, fv * u_field_warp * 260.0);                 // Warp: vertical push
+    if(u_field_refract > 0.0) disp += fgrad(p) * fv * u_field_refract * 900.0;  // Refract: bend along mask gradient
+  }
+  vec2 sc = q - disp;                // source sample coordinate
+  if(u_field_on && u_field_glitch > 0.0){                         // Glitch: pixelate + horizontal tear
+    float g = fv * u_field_glitch;
+    float block = mix(2.0, 48.0, g);
+    sc = floor(sc/block)*block + block*0.5;
+    float row = floor(sc.y/block);
+    float h = fract(sin(row*91.17 + floor(u_time*10.0)*7.13) * 43758.5453);
+    sc.x += (h - 0.5) * g * 160.0;
+  }
+  float lum = sourceLum(sc);
+  if(u_field_on) lum = 1.0 - (1.0-lum)*(1.0 - fv*u_field_mod);    // Brighten: screen-lift
+  if(u_post_on){ lum = floor(lum*u_post_lv)/u_post_lv; }   // posterise -> hard bands
+
+  vec3 col;
+  if(u_con){
+    float cph = u_cphase + (u_field_on ? fv * u_field_cycle : 0.0);   // Color cycle: shift the LUT lookup locally
+    // cap just below 1 so the bright peak never lands on fract()'s wrap point (1.0 -> 0.0),
+    // which would sample the dark first LUT stop and draw a 1px dark seam at the gradient centre
+    col = texture2D(u_lut, vec2(fract(min(lum,0.998)*u_cycles + cph), 0.5)).rgb;
+  }
+  else { col = vec3(lum); }
+  if(u_field_on){
+    if(abs(u_field_hue) > 0.001) col = hueRot(col, fv * u_field_hue * 3.14159);   // Hue shift
+    if(abs(u_field_sat) > 0.001){                                                  // Saturation
+      float L = dot(col, vec3(0.299,0.587,0.114));
+      col = clamp(mix(vec3(L), col, max(0.0, 1.0 + fv*u_field_sat*1.5)), 0.0, 1.0);
+    }
+    if(u_field_invert > 0.0) col = mix(col, 1.0 - col, fv * u_field_invert);       // Invert
+  }
+  gl_FragColor = vec4(col, 1.0);
+}`;
+
+// ---- post-process shaders (applied on top of the rendered scene) ----
+const BLUR_FS = `
+precision highp float;
+uniform sampler2D u_tex; uniform vec2 u_texel, u_dir; uniform float u_radius;
+void main(){
+  vec2 uv = gl_FragCoord.xy * u_texel;
+  vec3 sum = vec3(0.0); float wsum = 0.0;
+  for(int i=-8;i<=8;i++){
+    float fi=float(i); float w=exp(-0.5*(fi*fi)/12.0);
+    vec2 off = u_dir * u_texel * (fi * u_radius/8.0);
+    sum += texture2D(u_tex, uv+off).rgb * w; wsum += w;
+  }
+  gl_FragColor = vec4(sum/wsum, 1.0);
+}`;
+const POST_FS = `
+precision highp float;
+uniform sampler2D u_tex; uniform vec2 u_res; uniform float u_time;
+uniform bool u_pix_on;   uniform float u_pix;
+uniform bool u_grain_on; uniform float u_grain;
+uniform bool u_dot_on; uniform float u_dot_space, u_dot_scale, u_dot_gamma; uniform int u_dot_shape; uniform bool u_dot_tint; uniform vec3 u_dot_col, u_dot_bg;
+uniform bool u_half_on; uniform float u_half_scale, u_half_ang;
+uniform bool u_dots_on; uniform float u_dots_space, u_dots_scale;
+uniform bool u_edge_on; uniform float u_edge_amt;
+uniform bool u_ca_on; uniform float u_ca_dir, u_ca_radial, u_ca_fall;
+uniform bool u_grade_on; uniform float u_grade_gain, u_grade_crush, u_grade_sat, u_grade_tint, u_vig, u_vig_rad;
+float hash21(vec2 p){ return fract(sin(dot(p, vec2(127.1,311.7)))*43758.5453123); }
+float bayer4(vec2 fc){
+  vec2 m=floor(mod(fc,4.0)); float i=m.x+m.y*4.0; float v=0.0;
+  if(i<0.5)v=0.0; else if(i<1.5)v=8.0; else if(i<2.5)v=2.0; else if(i<3.5)v=10.0;
+  else if(i<4.5)v=12.0; else if(i<5.5)v=4.0; else if(i<6.5)v=14.0; else if(i<7.5)v=6.0;
+  else if(i<8.5)v=3.0; else if(i<9.5)v=11.0; else if(i<10.5)v=1.0; else if(i<11.5)v=9.0;
+  else if(i<12.5)v=15.0; else if(i<13.5)v=7.0; else if(i<14.5)v=13.0; else v=5.0;
+  return (v+0.5)/16.0;
+}
+vec3 halftoneFx(){                                  // variable-size newsprint dots, angled screen
+  float sp=max(u_half_scale,2.0);
+  float c=cos(u_half_ang), s=sin(u_half_ang);
+  mat2 R=mat2(c,-s,s,c), Ri=mat2(c,s,-s,c);
+  vec2 rc=R*gl_FragCoord.xy;
+  vec2 cell=floor(rc/sp), center=(cell+0.5)*sp;
+  vec3 sc=texture2D(u_tex, (Ri*center)/u_res).rgb;
+  float ink=1.0-dot(sc, vec3(0.299,0.587,0.114));
+  float r=sqrt(clamp(ink,0.0,1.0))*0.72;
+  float d=length((rc-center)/sp);
+  return mix(vec3(1.0), vec3(0.0), smoothstep(r, r-0.08, d));
+}
+vec3 dotsFx(){                                      // even grid, dot size by brightness, colour kept
+  float sp=max(u_dots_space,2.0);
+  vec2 cell=floor(gl_FragCoord.xy/sp), center=(cell+0.5)*sp;
+  vec3 sc=texture2D(u_tex, center/u_res).rgb;
+  float b=dot(sc, vec3(0.299,0.587,0.114));
+  float d=length((gl_FragCoord.xy-center)/sp);
+  return mix(vec3(0.02,0.02,0.03), sc, smoothstep(b*u_dots_scale, b*u_dots_scale-0.12, d));
+}
+vec3 edgeFx(){                                      // Sobel edge detection, colour edges on black
+  vec2 tx=1.0/u_res; vec2 uv=gl_FragCoord.xy/u_res; vec3 lw=vec3(0.299,0.587,0.114);
+  float tl=dot(texture2D(u_tex,uv+tx*vec2(-1.0,-1.0)).rgb,lw);
+  float tm=dot(texture2D(u_tex,uv+tx*vec2( 0.0,-1.0)).rgb,lw);
+  float tr=dot(texture2D(u_tex,uv+tx*vec2( 1.0,-1.0)).rgb,lw);
+  float ml=dot(texture2D(u_tex,uv+tx*vec2(-1.0, 0.0)).rgb,lw);
+  float mr=dot(texture2D(u_tex,uv+tx*vec2( 1.0, 0.0)).rgb,lw);
+  float bl=dot(texture2D(u_tex,uv+tx*vec2(-1.0, 1.0)).rgb,lw);
+  float bm=dot(texture2D(u_tex,uv+tx*vec2( 0.0, 1.0)).rgb,lw);
+  float br=dot(texture2D(u_tex,uv+tx*vec2( 1.0, 1.0)).rgb,lw);
+  float gx=(tr+2.0*mr+br)-(tl+2.0*ml+bl);
+  float gy=(bl+2.0*bm+br)-(tl+2.0*tm+tr);
+  float e=clamp(sqrt(gx*gx+gy*gy)*u_edge_amt,0.0,1.0);
+  return mix(vec3(0.0), texture2D(u_tex,uv).rgb, e);
+}
+float dotMask(vec2 l, float sc){
+  if(u_dot_shape==0) return step(length(l), sc);
+  else if(u_dot_shape==1) return step(max(abs(l.x),abs(l.y)), sc);
+  else if(u_dot_shape==2){ float yy=l.y*0.5+0.5; return step(abs(l.x), sc*yy)*step(l.y, sc)*step(-sc, l.y); }
+  float t=sc*0.42; return max(step(abs(l.x),t)*step(abs(l.y),sc), step(abs(l.y),t)*step(abs(l.x),sc));
+}
+vec3 dotDither(){
+  vec2 fc = gl_FragCoord.xy; float sp = max(u_dot_space, 2.0);
+  vec2 cell = floor(fc/sp), center = (cell+0.5)*sp;
+  vec3 ec = texture2D(u_tex, center/u_res).rgb;
+  float v = pow(dot(ec, vec3(0.299,0.587,0.114)), u_dot_gamma);
+  float present = step(bayer4(cell), v);
+  float inDot = dotMask((fc-center)/(sp*0.5), u_dot_scale);
+  vec3 dc = u_dot_tint ? ec : u_dot_col;
+  return mix(u_dot_bg, dc, present*inDot);
+}
+void main(){
+  vec2 uv = gl_FragCoord.xy / u_res;
+  vec2 suv = uv;
+  if(u_pix_on){ vec2 bk = max(u_pix,1.0)/u_res; suv = (floor(uv/bk)+0.5)*bk; }
+  vec3 col;
+  if(u_edge_on){ col = edgeFx(); }
+  else if(u_dot_on){ col = dotDither(); }
+  else if(u_half_on){ col = halftoneFx(); }
+  else if(u_dots_on){ col = dotsFx(); }
+  else if(u_ca_on){                                 // rich chromatic aberration (radial + directional)
+    vec2 cc = uv - vec2(0.5, 0.46); cc.x *= u_res.x/u_res.y;
+    float ca = u_ca_dir + u_ca_radial * pow(length(cc)*1.414, u_ca_fall);
+    col = vec3(texture2D(u_tex, suv+vec2(ca,0.0)).r, texture2D(u_tex, suv).g, texture2D(u_tex, suv-vec2(ca,0.0)).b);
+  }
+  else { col = texture2D(u_tex, suv).rgb; }
+  if(u_grade_on){                                   // film/VHS grade + vignette
+    col *= u_grade_gain;
+    col = mix(col, col*col*(3.0-2.0*col), u_grade_crush);
+    float L = dot(col, vec3(0.299,0.587,0.114));
+    col = mix(vec3(L), col, u_grade_sat);
+    col *= mix(vec3(1.0), vec3(0.82,0.93,1.06), u_grade_tint);
+    vec2 vc = uv - 0.5; vc.x *= u_res.x/u_res.y;
+    col *= 1.0 - u_vig * smoothstep(u_vig_rad, u_vig_rad+0.45, length(vc)*1.414);
+  }
+  if(u_grain_on){ col += (hash21(gl_FragCoord.xy*1.37 + fract(u_time*1.7)*53.0)-0.5) * u_grain; }
+  gl_FragColor = vec4(clamp(col,0.0,1.0), 1.0);
+}`;
+
+function compile(type, src){
+  const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s);
+  if(!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s));
+  return s;
+}
+function buildProgram(fsSrc){
+  const p = gl.createProgram();
+  gl.attachShader(p, compile(gl.VERTEX_SHADER, VS));
+  gl.attachShader(p, compile(gl.FRAGMENT_SHADER, fsSrc));
+  gl.linkProgram(p);
+  if(!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(p));
+  return p;
+}
+const prog = buildProgram(FS), blurProg = buildProgram(BLUR_FS), postProg = buildProgram(POST_FS);
+
+const buf = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 3,-1, -1,3]), gl.STATIC_DRAW);
+function drawQuad(p){
+  const a = gl.getAttribLocation(p, 'a_pos');
+  gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+  gl.enableVertexAttribArray(a);
+  gl.vertexAttribPointer(a, 2, gl.FLOAT, false, 0, 0);
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
+}
+
+// offscreen framebuffers for the post pipeline
+let RW=1200, RH=1200;
+function makeFBO(w,h){
+  const tex=gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, tex);
+  gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,w,h,0,gl.RGBA,gl.UNSIGNED_BYTE,null);
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
+  const fb=gl.createFramebuffer(); gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
+  gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex, 0);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  return {fb, tex};
+}
+let fboA=makeFBO(RW,RH);
+// keep the render resolution matched to the visible canvas area so the effect fills
+// the whole center (between the rails) instead of being letterboxed into a square.
+function resizeCanvas(){
+  const st=document.getElementById('stage'); if(!st) return;
+  const w=Math.max(64, st.clientWidth), h=Math.max(64, st.clientHeight);
+  const cap=1600, sc=Math.min(1, cap/Math.max(w,h));
+  const nw=Math.round(w*sc), nh=Math.round(h*sc);
+  if(nw===RW && nh===RH) return;
+  RW=nw; RH=nh; canvas.width=RW; canvas.height=RH;
+  gl.deleteTexture(fboA.tex); gl.deleteFramebuffer(fboA.fb);
+  fboA=makeFBO(RW,RH);
+}
+const SRC=1024;
+const srcTmpFBO=makeFBO(SRC,SRC), srcBlurFBO=makeFBO(SRC,SRC); // for pre-blurring image/text source
+
+const U = {};
+['u_res','u_time','u_stripW','u_gradHalf','u_blur','u_gradCenter',
+ 'u_w1on','u_w1h','u_w1w','u_w1d','u_w1s','u_w1t',
+ 'u_w2on','u_w2h','u_w2w','u_w2d','u_w2s','u_w2t',
+ 'u_mon','u_mhon','u_mc','u_ma','u_kon','u_kseg','u_krot',
+ 'u_radial','u_cross','u_srcMode','u_srcTex','u_con','u_cycles','u_cphase','u_lut','u_post_on','u_post_lv',
+ 'u_field_on','u_fieldTex','u_field_warp','u_field_mod',
+ 'u_field_time','u_field_hue','u_field_glitch','u_field_refract','u_field_cycle','u_field_invert','u_field_sat']
+ .forEach(n => U[n] = gl.getUniformLocation(prog, n));
+const Ub = {}; ['u_tex','u_texel','u_dir','u_radius'].forEach(n=> Ub[n]=gl.getUniformLocation(blurProg,n));
+const Up = {}; ['u_tex','u_res','u_time','u_pix_on','u_pix','u_grain_on','u_grain',
+  'u_half_on','u_half_scale','u_half_ang','u_dots_on','u_dots_space','u_dots_scale','u_edge_on','u_edge_amt',
+  'u_ca_on','u_ca_dir','u_ca_radial','u_ca_fall',
+  'u_grade_on','u_grade_gain','u_grade_crush','u_grade_sat','u_grade_tint','u_vig','u_vig_rad',
+  'u_dot_on','u_dot_space','u_dot_scale','u_dot_gamma','u_dot_shape','u_dot_tint','u_dot_col','u_dot_bg']
+  .forEach(n=> Up[n]=gl.getUniformLocation(postProg,n));
+
+// LUT texture (256x1)
+const lutTex = gl.createTexture();
+gl.bindTexture(gl.TEXTURE_2D, lutTex);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+
+// source texture (unit 1) for image / text mode
+const srcTex = gl.createTexture();
+gl.bindTexture(gl.TEXTURE_2D, srcTex);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+// field texture (unit 2) — composed SVG shape × gradient mask, drives field-warp + brighten
+const fieldTex = gl.createTexture();
+gl.bindTexture(gl.TEXTURE_2D, fieldTex);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+const FW=1024;
+const fShapeC=document.createElement('canvas'); fShapeC.width=FW; fShapeC.height=FW; const fShapeX=fShapeC.getContext('2d');
+const fMaskC=document.createElement('canvas'); fMaskC.width=FW; fMaskC.height=FW; const fMaskX=fMaskC.getContext('2d');
+const fFieldC=document.createElement('canvas'); fFieldC.width=FW; fFieldC.height=FW; const fFieldX=fFieldC.getContext('2d');
+gl.bindTexture(gl.TEXTURE_2D, fieldTex); gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,1,1,0,gl.RGBA,gl.UNSIGNED_BYTE,new Uint8Array([0,0,0,255]));
+const FIELD_SHAPES={ Hexagon:'M50 5 L90 28 90 72 50 95 10 72 10 28 Z',
+  Circle:'M50 5 a45 45 0 1 0 0.1 0 Z' };
+let fieldShapeDef={ d:FIELD_SHAPES.Circle, minx:0, miny:0, w:100, h:100 };
+function parseFieldSVG(txt){ try{ var doc=new DOMParser().parseFromString(txt,'image/svg+xml'); var svg=doc.querySelector('svg'); if(!svg) return null;
+  var vb=svg.getAttribute('viewBox'), minx=0,miny=0,w=100,h=100; if(vb){ var pp=vb.split(/[\s,]+/).map(Number); minx=pp[0];miny=pp[1];w=pp[2];h=pp[3]; } else { w=parseFloat(svg.getAttribute('width'))||100; h=parseFloat(svg.getAttribute('height'))||100; }
+  var d=''; doc.querySelectorAll('path').forEach(e=>{ d+=' '+(e.getAttribute('d')||''); });
+  doc.querySelectorAll('circle').forEach(e=>{ var cx=+e.getAttribute('cx'),cy=+e.getAttribute('cy'),r=+e.getAttribute('r'); d+=' M '+(cx-r)+' '+cy+' a '+r+' '+r+' 0 1 0 '+(2*r)+' 0 a '+r+' '+r+' 0 1 0 '+(-2*r)+' 0 Z'; });
+  doc.querySelectorAll('ellipse').forEach(e=>{ var cx=+e.getAttribute('cx'),cy=+e.getAttribute('cy'),rx=+e.getAttribute('rx'),ry=+e.getAttribute('ry'); d+=' M '+(cx-rx)+' '+cy+' a '+rx+' '+ry+' 0 1 0 '+(2*rx)+' 0 a '+rx+' '+ry+' 0 1 0 '+(-2*rx)+' 0 Z'; });
+  doc.querySelectorAll('rect').forEach(e=>{ var x=+e.getAttribute('x'),y=+e.getAttribute('y'),ww=+e.getAttribute('width'),hh=+e.getAttribute('height'); d+=' M '+x+' '+y+' h '+ww+' v '+hh+' h '+(-ww)+' Z'; });
+  doc.querySelectorAll('polygon').forEach(e=>{ d+=' M '+e.getAttribute('points')+' Z'; });
+  doc.querySelectorAll('polyline').forEach(e=>{ d+=' M '+e.getAttribute('points'); });
+  doc.querySelectorAll('line').forEach(e=>{ d+=' M '+e.getAttribute('x1')+' '+e.getAttribute('y1')+' L '+e.getAttribute('x2')+' '+e.getAttribute('y2'); });
+  if(!d.trim()) return null; return { d:d.trim(), minx:minx, miny:miny, w:w, h:h }; }catch(_){ return null; } }
+function renderFieldShape(){ fShapeX.fillStyle='#000'; fShapeX.fillRect(0,0,FW,FW); var pd; try{ pd=new Path2D(fieldShapeDef.d); }catch(_){ pd=null; }
+  if(pd){ fShapeX.save(); fShapeX.filter='blur('+(P.f_blur*FW/560)+'px)'; var sc=(FW*P.f_size)/Math.max(fieldShapeDef.w,fieldShapeDef.h);
+    fShapeX.translate(P.f_px*FW,P.f_py*FW); fShapeX.rotate(P.f_rot*Math.PI/180); fShapeX.scale(sc,sc); fShapeX.translate(-(fieldShapeDef.minx+fieldShapeDef.w/2),-(fieldShapeDef.miny+fieldShapeDef.h/2));
+    fShapeX.fillStyle='#fff'; fShapeX.strokeStyle='#fff'; if(P.f_outline){ fShapeX.lineWidth=(P.f_thick*FW/560)/sc; fShapeX.lineJoin='round'; fShapeX.lineCap='round'; fShapeX.stroke(pd); } else fShapeX.fill(pd); fShapeX.restore(); }
+  buildFieldTex(); }
+function renderFieldMask(){ fMaskX.clearRect(0,0,FW,FW);
+  if(P.fm_type===0){ fMaskX.fillStyle='#fff'; fMaskX.fillRect(0,0,FW,FW); }
+  else if(P.fm_type===1){ var a=P.fm_rot*Math.PI/180, c=FW/2, len=FW*P.fm_size, dx=Math.cos(a)*len/2, dy=Math.sin(a)*len/2, g=fMaskX.createLinearGradient(c-dx,c-dy,c+dx,c+dy), c0=P.fm_invert?'#fff':'#000', c1=P.fm_invert?'#000':'#fff', s=P.fm_soft;
+    g.addColorStop(0,c0); g.addColorStop(Math.max(0,0.5-s/2),c0); g.addColorStop(Math.min(1,0.5+s/2),c1); g.addColorStop(1,c1); fMaskX.fillStyle=g; fMaskX.fillRect(0,0,FW,FW); }
+  else { var R=FW*0.55*P.fm_size, g2=fMaskX.createRadialGradient(FW/2,FW/2,0,FW/2,FW/2,R), ci=P.fm_invert?'#000':'#fff', co=P.fm_invert?'#fff':'#000'; g2.addColorStop(0,ci); g2.addColorStop(Math.max(0,1-P.fm_soft),ci); g2.addColorStop(1,co); fMaskX.fillStyle=g2; fMaskX.fillRect(0,0,FW,FW); }
+  buildFieldTex(); }
+function buildFieldTex(){ fFieldX.globalCompositeOperation='source-over'; fFieldX.clearRect(0,0,FW,FW); fFieldX.drawImage(fShapeC,0,0); fFieldX.globalCompositeOperation='multiply'; fFieldX.drawImage(fMaskC,0,0); fFieldX.globalCompositeOperation='source-over';
+  gl.bindTexture(gl.TEXTURE_2D, fieldTex); gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,fFieldC); }
+function setFieldShape(d){ fieldShapeDef={ d:d, minx:0, miny:0, w:100, h:100 }; renderFieldShape(); }
+
+const srcCanvas = document.createElement('canvas'); srcCanvas.width=1024; srcCanvas.height=1024;
+const srcCtx = srcCanvas.getContext('2d');
+let srcRaw=null;
+function pixelSortColumns(img, lo, hi, down){       // true vertical pixel sort (CPU bake)
+  const W=img.width, H=img.height, s=img.data;
+  const out=new ImageData(new Uint8ClampedArray(s), W, H), o=out.data;
+  for(let x=0;x<W;x++){ let y=0;
+    while(y<H){
+      while(y<H){ const i=(y*W+x)*4, L=(0.2126*s[i]+0.7152*s[i+1]+0.0722*s[i+2])/255; if(L>=lo&&L<=hi) break; y++; }
+      const st=y;
+      while(y<H){ const i=(y*W+x)*4, L=(0.2126*s[i]+0.7152*s[i+1]+0.0722*s[i+2])/255; if(!(L>=lo&&L<=hi)) break; y++; }
+      const e=y;
+      if(e-st>2){ const arr=[]; for(let yy=st;yy<e;yy++){ const i=(yy*W+x)*4; arr.push([0.2126*s[i]+0.7152*s[i+1]+0.0722*s[i+2], s[i],s[i+1],s[i+2]]); }
+        arr.sort((a,b)=>a[0]-b[0]); if(!down) arr.reverse();
+        for(let k=0;k<arr.length;k++){ const i=((st+k)*W+x)*4; o[i]=arr[k][1]; o[i+1]=arr[k][2]; o[i+2]=arr[k][3]; o[i+3]=255; } }
+    } }
+  return out;
+}
+function uploadSrcTexture(){                         // called after a fresh source is drawn
+  srcRaw = srcCtx.getImageData(0,0,srcCanvas.width,srcCanvas.height);
+  if(P.psort_on) srcCtx.putImageData(pixelSortColumns(srcRaw, P.psort_low, P.psort_high, P.psort_down), 0, 0);
+  gl.bindTexture(gl.TEXTURE_2D, srcTex);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, srcCanvas);
+}
+function resortSource(){                             // re-bake from the kept raw copy (threshold/toggle changes)
+  if(!srcRaw) return;
+  if(P.psort_on) srcCtx.putImageData(pixelSortColumns(srcRaw, P.psort_low, P.psort_high, P.psort_down), 0, 0);
+  else srcCtx.putImageData(srcRaw, 0, 0);
+  gl.bindTexture(gl.TEXTURE_2D, srcTex);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, srcCanvas);
+}
+function srcFromText(txt){
+  const c=srcCtx, W=srcCanvas.width, H=srcCanvas.height;
+  c.fillStyle='#000'; c.fillRect(0,0,W,H);
+  c.fillStyle='#fff'; c.textAlign='center'; c.textBaseline='middle';
+  let size=420; c.font=`900 ${size}px -apple-system,Arial,sans-serif`;
+  while(c.measureText(txt).width > W*0.9 && size>20){ size-=10; c.font=`900 ${size}px -apple-system,Arial,sans-serif`; }
+  c.fillText(txt, W/2, H/2);
+  uploadSrcTexture();
+}
+srcFromText('WARP'); // placeholder so texture is never empty
+
+function hexToRgb(h){ return [parseInt(h.slice(1,3),16), parseInt(h.slice(3,5),16), parseInt(h.slice(5,7),16)]; }
+function sampleStops(t){
+  const s = stops.slice().sort((a,b)=>a.pos-b.pos);
+  if(t <= s[0].pos) return hexToRgb(s[0].color);
+  if(t >= s[s.length-1].pos) return hexToRgb(s[s.length-1].color);
+  for(let i=0;i<s.length-1;i++){
+    if(t >= s[i].pos && t <= s[i+1].pos){
+      const f = (t - s[i].pos)/Math.max(1e-6, s[i+1].pos - s[i].pos);
+      const a = hexToRgb(s[i].color), b = hexToRgb(s[i+1].color);
+      return [a[0]+(b[0]-a[0])*f, a[1]+(b[1]-a[1])*f, a[2]+(b[2]-a[2])*f];
+    }
+  }
+  return hexToRgb(s[s.length-1].color);
+}
+function updateLUT(){
+  const N=256, data=new Uint8Array(N*4);
+  // Mirror: map the LUT param to a triangle (0->1->0) so the ramp reflects at the centre.
+  // Both ends become the same (dark) colour, which also makes an animated phase cycle seamlessly.
+  for(let i=0;i<N;i++){ let t=i/(N-1); if(P.mirror) t=1.0-Math.abs(t*2.0-1.0);
+    const c=sampleStops(t); data[i*4]=c[0]; data[i*4+1]=c[1]; data[i*4+2]=c[2]; data[i*4+3]=255; }
+  gl.bindTexture(gl.TEXTURE_2D, lutTex);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, N, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, data);
+  // CSS preview always shows the un-mirrored stops — the mirror only affects the LUT/motion,
+  // and a reflected preview here misrepresents the editable stops.
+  const css = stops.slice().sort((a,b)=>a.pos-b.pos).map(s=>`${s.color} ${(s.pos*100).toFixed(1)}%`).join(',');
+  document.getElementById('gradBar').style.background = `linear-gradient(90deg, ${css})`;
+}
+
+function render(){
+  resizeCanvas();   // keep render res = visible canvas area (fills the center, no distortion)
+  // ---- pre-blur the image/text source so it blurs smoothly (single-tap in the scene) ----
+  let sourceTex = srcTex;
+  if(P.srcMode===1 && P.blur>0.5){
+    gl.useProgram(blurProg);
+    gl.uniform2f(Ub.u_texel, 1/SRC, 1/SRC);
+    const iters=3; gl.uniform1f(Ub.u_radius, P.blur*(SRC/1200)/Math.sqrt(iters)); // iterate → clean gaussian
+    let readTex = srcTex;
+    for(let k=0;k<iters;k++){
+      gl.bindFramebuffer(gl.FRAMEBUFFER, srcTmpFBO.fb); gl.viewport(0,0,SRC,SRC);
+      gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, readTex); gl.uniform1i(Ub.u_tex,0);
+      gl.uniform2f(Ub.u_dir,1,0); drawQuad(blurProg);
+      gl.bindFramebuffer(gl.FRAMEBUFFER, srcBlurFBO.fb); gl.viewport(0,0,SRC,SRC);
+      gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, srcTmpFBO.tex); gl.uniform1i(Ub.u_tex,0);
+      gl.uniform2f(Ub.u_dir,0,1); drawQuad(blurProg);
+      readTex = srcBlurFBO.tex;
+    }
+    sourceTex = srcBlurFBO.tex;
+  }
+  // ---- pass 1: scene -> fboA ----
+  gl.useProgram(prog);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, fboA.fb);
+  gl.viewport(0,0,RW,RH);
+  gl.uniform2f(U.u_res, RW, RH);
+  gl.uniform1f(U.u_time, P.time||0);
+  gl.uniform1f(U.u_stripW, P.stripW*(RW/1200));   // keep px controls as a fraction of a 1200 reference
+  gl.uniform1f(U.u_gradHalf, P.gradHalf*(RH/1200));
+  gl.uniform1f(U.u_blur, P.blur*(RW/1200));
+  gl.uniform1f(U.u_gradCenter, P.gradCenter*RH);
+  let s1=P.w1s, s2=P.w2s;
+  if(P.seamless){ const T=Math.max(0.5,P.loopLen); s1=Math.max(1,Math.round(P.w1s*T))/T; s2=Math.max(1,Math.round(P.w2s*T))/T; }
+  gl.uniform1i(U.u_w1on, P.w1on?1:0);
+  gl.uniform1f(U.u_w1h,P.w1h); gl.uniform1f(U.u_w1w,P.w1w); gl.uniform1f(U.u_w1d,P.w1d); gl.uniform1f(U.u_w1s,s1); gl.uniform1i(U.u_w1t,P.w1t);
+  gl.uniform1i(U.u_w2on, P.w2on?1:0);
+  gl.uniform1f(U.u_w2h,P.w2h); gl.uniform1f(U.u_w2w,P.w2w); gl.uniform1f(U.u_w2d,P.w2d); gl.uniform1f(U.u_w2s,s2); gl.uniform1i(U.u_w2t,P.w2t);
+  gl.uniform1i(U.u_mon, P.mon?1:0); gl.uniform1i(U.u_mhon, P.mhon?1:0);
+  gl.uniform2f(U.u_mc, P.mcx/1200*RW, P.mcy/1200*RH); gl.uniform1f(U.u_ma, P.ma);
+  gl.uniform1i(U.u_kon, P.kon?1:0); gl.uniform1f(U.u_kseg, P.kseg); gl.uniform1f(U.u_krot, P.krot);
+  gl.uniform1i(U.u_radial, P.radial?1:0); gl.uniform1i(U.u_cross, P.cross?1:0); gl.uniform1i(U.u_srcMode, P.srcMode||0);
+  gl.uniform1i(U.u_con, P.con?1:0); gl.uniform1f(U.u_cycles, P.cycles); gl.uniform1f(U.u_cphase, colorPhase);
+  gl.uniform1i(U.u_post_on, P.post_on?1:0); gl.uniform1f(U.u_post_lv, P.post_lv);
+  gl.uniform1i(U.u_field_on, P.field_on?1:0); gl.uniform1f(U.u_field_warp, P.field_warp); gl.uniform1f(U.u_field_mod, P.field_mod);
+  gl.uniform1f(U.u_field_time, P.field_time); gl.uniform1f(U.u_field_hue, P.field_hue); gl.uniform1f(U.u_field_glitch, P.field_glitch);
+  gl.uniform1f(U.u_field_refract, P.field_refract); gl.uniform1f(U.u_field_cycle, P.field_cycle); gl.uniform1f(U.u_field_invert, P.field_invert); gl.uniform1f(U.u_field_sat, P.field_sat);
+  gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, lutTex); gl.uniform1i(U.u_lut, 0);
+  gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, sourceTex); gl.uniform1i(U.u_srcTex, 1);
+  gl.activeTexture(gl.TEXTURE2); gl.bindTexture(gl.TEXTURE_2D, fieldTex); gl.uniform1i(U.u_fieldTex, 2);
+  drawQuad(prog);
+
+  let tex = fboA.tex;
+  const fx = !fxBypass;   // bypass = preview the motion without any post FX
+
+  // ---- post fx -> canvas ----
+  gl.useProgram(postProg);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  gl.viewport(0,0,canvas.width,canvas.height);
+  gl.uniform2f(Up.u_res, RW, RH); gl.uniform1f(Up.u_time, P.time||0);
+  gl.uniform1i(Up.u_pix_on, (fx&&P.pix_on)?1:0);   gl.uniform1f(Up.u_pix, P.pix);
+  gl.uniform1i(Up.u_grain_on, (fx&&P.grain_on)?1:0); gl.uniform1f(Up.u_grain, P.grain);
+  gl.uniform1i(Up.u_half_on,(fx&&P.half_on)?1:0); gl.uniform1f(Up.u_half_scale,P.half_scale); gl.uniform1f(Up.u_half_ang,P.half_ang*Math.PI/180.0);
+  gl.uniform1i(Up.u_dots_on,(fx&&P.dots_on)?1:0); gl.uniform1f(Up.u_dots_space,P.dots_space); gl.uniform1f(Up.u_dots_scale,P.dots_scale);
+  gl.uniform1i(Up.u_edge_on,(fx&&P.edge_on)?1:0); gl.uniform1f(Up.u_edge_amt,P.edge_amt);
+  gl.uniform1i(Up.u_ca_on,(fx&&P.ca_on)?1:0); gl.uniform1f(Up.u_ca_dir,P.ca_dir); gl.uniform1f(Up.u_ca_radial,P.ca_radial); gl.uniform1f(Up.u_ca_fall,P.ca_fall);
+  gl.uniform1i(Up.u_grade_on,(fx&&P.grade_on)?1:0); gl.uniform1f(Up.u_grade_gain,P.grade_gain); gl.uniform1f(Up.u_grade_crush,P.grade_crush); gl.uniform1f(Up.u_grade_sat,P.grade_sat); gl.uniform1f(Up.u_grade_tint,P.grade_tint); gl.uniform1f(Up.u_vig,P.vig); gl.uniform1f(Up.u_vig_rad,P.vig_rad);
+  gl.uniform1i(Up.u_dot_on,(fx&&P.dot_on)?1:0); gl.uniform1f(Up.u_dot_space,P.dot_space); gl.uniform1f(Up.u_dot_scale,P.dot_scale); gl.uniform1f(Up.u_dot_gamma,P.dot_gamma); gl.uniform1i(Up.u_dot_shape,P.dot_shape); gl.uniform1i(Up.u_dot_tint,P.dot_tint?1:0);
+  var dc=hexToRgb(P.dot_col), db=hexToRgb(P.dot_bg); gl.uniform3f(Up.u_dot_col, dc[0]/255,dc[1]/255,dc[2]/255); gl.uniform3f(Up.u_dot_bg, db[0]/255,db[1]/255,db[2]/255);
+  gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, tex); gl.uniform1i(Up.u_tex,0);
+  drawQuad(postProg);
+}
+
+// ---------- animation ----------
+let playing = true, last = null, colorPhase = 0, fxBypass = false;
+P.time = 0;
+function loop(now){
+  if(last===null) last = now;
+  const dt = (now - last)/1000; last = now;
+  if(document.body.classList.contains('mode-thermal')){ requestAnimationFrame(loop); return; }  // Pattern idle while Thermal is shown
+  if(playing){
+    P.time += dt * P.gspeed;
+    const wrap = P.seamless ? Math.max(0.5,P.loopLen) : 40;
+    if(P.time > wrap) P.time -= wrap;
+    colorPhase = (colorPhase + dt * P.cps) % 1;
+    document.getElementById('scrub').value = P.time;
+  }
+  render();
+  updateGradEdit();
+  updateFieldEdit();
+  requestAnimationFrame(loop);
+}
+
+// ---------- controls UI ----------
+function slider(parent, key, label, min, max, step, fmt){
+  const row = document.createElement('div'); row.className='row';
+  row.innerHTML = `<label>${label}</label><input type="range" min="${min}" max="${max}" step="${step}"><span class="val"></span>`;
+  const inp = row.querySelector('input'), val = row.querySelector('.val');
+  inp.id = 'ctl_'+key; val.id = 'val_'+key;
+  inp.value = P[key];
+  const show = ()=> val.textContent = (fmt? fmt(P[key]) : P[key]);
+  show();
+  inp.addEventListener('input', ()=>{ P[key]=parseFloat(inp.value); show(); });
+  parent.appendChild(row);
+}
+function typeSelect(parent, key){
+  const row = document.createElement('div'); row.className='row';
+  row.innerHTML = `<label>Wave type</label><select style="grid-column:2/4">
+    <option value="0">Semicircle</option><option value="1">Sine</option>
+    <option value="2">Triangle</option><option value="3">Square</option>
+    <option value="4">Sawtooth</option></select>`;
+  const sel = row.querySelector('select'); sel.value = P[key];
+  sel.addEventListener('change', ()=> P[key]=parseInt(sel.value));
+  parent.appendChild(row);
+}
+function buildWave(bodyId, p){
+  const b = document.getElementById(bodyId); b.innerHTML='';
+  typeSelect(b, p+'t');
+  slider(b, p+'h', 'Height', 0, 600, 1);
+  slider(b, p+'w', 'Width', 10, 1200, 1);
+  slider(b, p+'d', 'Direction', 0, 360, 1, v=>v+'°');
+  slider(b, p+'s', 'Speed', 0, 5, 0.05, v=>v.toFixed(2));
+}
+const sb = document.getElementById('sbody');
+const mb = document.getElementById('mbody');
+const kb = document.getElementById('kbody');
+
+// (re)build every control from the current P + stops — used at load, reset, randomize, load-preset
+function syncAllControls(){
+  buildWave('w1body','w1'); buildWave('w2body','w2');
+  sb.innerHTML='';
+  slider(sb,'gspeed','Anim speed',0,2,0.01,v=>v.toFixed(2));
+  slider(sb,'blur','Blur',0,300,1);
+  slider(sb,'stripW','Strip W',20,800,1);
+  slider(sb,'gradHalf','Grad span',20,1200,1);
+  mb.innerHTML='<div class="row"><label>Horiz fold</label><span></span><span class="toggle" style="margin:0"><input type="checkbox" id="mhon"></span></div>';
+  slider(mb,'ma','Angle',0,360,1,v=>v+'°'); slider(mb,'mcx','Center X',0,1200,1); slider(mb,'mcy','Center Y',0,1200,1);
+  kb.innerHTML='';
+  slider(kb,'kseg','Segments',2,16,1); slider(kb,'krot','Rotation',0,360,1,v=>v+'°');
+  ['w1on','w2on','mon','mhon','kon','con','radial','cross','seamless',
+   'grain_on','pix_on','post_on','half_on','dots_on','edge_on',
+   'ca_on','grade_on','dot_on','dot_tint','field_on','fm_show'].forEach(id=>{ const el=document.getElementById(id);
+    if(el){ el.checked=P[id]; el.onchange=()=>P[id]=el.checked; el.onclick=e=>e.stopPropagation(); }});
+  // source-mode toggle needs a side effect
+  const su=document.getElementById('srcUse');
+  if(su){ su.checked = P.srcMode===1; su.onclick=e=>e.stopPropagation();
+    su.onchange=()=>{ P.srcMode = su.checked?1:0; }; }
+  const mir=document.getElementById('mirror');
+  if(mir){ mir.checked = P.mirror; mir.onclick=e=>e.stopPropagation();
+    mir.onchange=()=>{ P.mirror = mir.checked; updateLUT(); }; }
+  cyc.value=P.cycles; cycV.textContent=P.cycles;
+  cps.value=P.cps; cpsV.textContent=P.cps.toFixed(3);
+  if(typeof loopLen!=='undefined'){ loopLen.value=P.loopLen; loopLenV.textContent=P.loopLen.toFixed(1); }
+  if(typeof FX_SLIDERS!=='undefined') FX_SLIDERS.forEach(([id,fmt])=>{ const el=document.getElementById(id), v=document.getElementById(id+'V');
+    if(el){ el.value=P[id]; if(v) v.textContent = fmt?fmt(P[id]):P[id]; }});
+  const pso=document.getElementById('psort_on'), psd=document.getElementById('psort_down'), psl=document.getElementById('psort_low'), psh=document.getElementById('psort_high');
+  if(pso){ pso.checked=P.psort_on; } if(psd){ psd.checked=P.psort_down; }
+  if(psl){ psl.value=P.psort_low; const v=document.getElementById('psort_lowV'); if(v) v.textContent=P.psort_low.toFixed(2); }
+  if(psh){ psh.value=P.psort_high; const v=document.getElementById('psort_highV'); if(v) v.textContent=P.psort_high.toFixed(2); }
+  if(typeof resortSource==='function') resortSource();
+  // field shape/mask + dot dither
+  if(typeof FSHAPE_SLIDERS!=='undefined'){ FSHAPE_SLIDERS.concat(FMASK_SLIDERS).forEach(([id,fmt])=>{ const el=document.getElementById(id), v=document.getElementById(id+'V'); if(el){ el.value=P[id]; if(v) v.textContent=fmt(P[id]); } });
+    const fo=document.getElementById('f_outline'); if(fo) fo.checked=P.f_outline;
+    const fi=document.getElementById('fm_invert'); if(fi) fi.checked=P.fm_invert;
+    const ft=document.getElementById('fm_type'); if(ft) ft.value=P.fm_type;
+    const ds=document.getElementById('dot_shape'); if(ds) ds.value=P.dot_shape;
+    const dco=document.getElementById('dot_col'); if(dco) dco.value=P.dot_col;
+    const dbg=document.getElementById('dot_bg'); if(dbg) dbg.value=P.dot_bg;
+    if(typeof renderFieldMask==='function'){ renderFieldMask(); renderFieldShape(); } }
+  renderStops(); updateLUT();
+}
+
+// cycles + color flow
+const cyc = document.getElementById('cycles'), cycV = document.getElementById('cyclesV');
+cyc.value = P.cycles; cyc.addEventListener('input', ()=>{ P.cycles=parseFloat(cyc.value); cycV.textContent=P.cycles; });
+const cps = document.getElementById('cps'), cpsV = document.getElementById('cpsV');
+cps.value = P.cps; cps.addEventListener('input', ()=>{ P.cps=parseFloat(cps.value); cpsV.textContent=P.cps.toFixed(3); });
+
+// loop length (manual id-wired, like cycles)
+const loopLen=document.getElementById('loopLen'), loopLenV=document.getElementById('loopLenV');
+loopLen.addEventListener('input', ()=>{ P.loopLen=parseFloat(loopLen.value); loopLenV.textContent=P.loopLen.toFixed(1); });
+
+// post-fx amount sliders (id-wired like cycles)
+const FX_SLIDERS=[['grain',v=>v.toFixed(2)],['pix',null],['post_lv',null],
+  ['half_scale',null],['half_ang',v=>v+'°'],['dots_space',null],['dots_scale',v=>v.toFixed(2)],['edge_amt',v=>v.toFixed(1)],
+  ['ca_dir',v=>v.toFixed(4)],['ca_radial',v=>v.toFixed(3)],['ca_fall',v=>v.toFixed(1)],
+  ['grade_gain',v=>v.toFixed(2)],['grade_crush',v=>v.toFixed(2)],['grade_sat',v=>v.toFixed(2)],['grade_tint',v=>v.toFixed(2)],['vig',v=>v.toFixed(2)],['vig_rad',v=>v.toFixed(2)],
+  ['dot_space',null],['dot_scale',v=>v.toFixed(2)],['dot_gamma',v=>v.toFixed(1)],
+  ['field_warp',v=>v.toFixed(2)],['field_mod',v=>v.toFixed(2)],['field_refract',v=>v.toFixed(2)],['field_time',v=>v.toFixed(2)],
+  ['field_hue',v=>v.toFixed(2)],['field_sat',v=>v.toFixed(2)],['field_cycle',v=>v.toFixed(2)],['field_invert',v=>v.toFixed(2)],['field_glitch',v=>v.toFixed(2)]];
+FX_SLIDERS.forEach(([id,fmt])=>{ const el=document.getElementById(id), v=document.getElementById(id+'V');
+  el.value=P[id]; if(v) v.textContent = fmt?fmt(P[id]):P[id];
+  el.addEventListener('input', ()=>{ P[id]=parseFloat(el.value); if(v) v.textContent = fmt?fmt(P[id]):P[id]; });
+});
+// remember the "include post fx in random" preference
+const rndFxCb=document.getElementById('rndFx');
+try{ rndFxCb.checked = localStorage.getItem('wwl_rndfx')!=='0'; }catch(_){}
+rndFxCb.addEventListener('change', ()=>{ try{ localStorage.setItem('wwl_rndfx', rndFxCb.checked?'1':'0'); }catch(_){} });
+// preview-without-FX bypass (a view toggle; doesn't change the saved settings)
+const fxBypassCb=document.getElementById('fxBypass');
+fxBypassCb.addEventListener('change', ()=>{ fxBypass=fxBypassCb.checked; });
+
+// ---------- New (bare strip) + Source (master effect bypass, restores on re-toggle) ----------
+let srcBypass={active:false, saved:null};
+const SRC_VIEW_KEYS=['w1on','w2on','mon','mhon','kon','radial','cross','field_on','grain_on','pix_on','post_on','half_on','dots_on','edge_on','ca_on','grade_on','dot_on'];
+const srcViewBtn=document.getElementById('srcViewBtn');
+function updateSourceBtn(){ if(!srcViewBtn) return;
+  srcViewBtn.textContent=srcBypass.active?'◑ Source (strip)':'◐ Source';
+  srcViewBtn.style.color=srcBypass.active?'#cfe0ff':''; srcViewBtn.style.borderColor=srcBypass.active?'#6b6bff':''; }
+if(srcViewBtn) srcViewBtn.addEventListener('click', ()=>{
+  if(!srcBypass.active){ srcBypass.saved={}; SRC_VIEW_KEYS.forEach(k=>{ srcBypass.saved[k]=P[k]; P[k]=false; }); srcBypass.active=true; }
+  else { if(srcBypass.saved) SRC_VIEW_KEYS.forEach(k=>{ P[k]=srcBypass.saved[k]; }); srcBypass.active=false; }
+  syncAllControls(); updateSourceBtn();
+});
+const newBtn=document.getElementById('newBtn');
+if(newBtn) newBtn.addEventListener('click', ()=>{
+  srcBypass.active=false; srcBypass.saved=null; updateSourceBtn();
+  applyConfig({ w1on:false, w2on:false, mon:false, mhon:false, kon:false, radial:false, cross:false, field_on:false });
+});
+
+
+// ---------- source: image / text ----------
+document.getElementById('srcTextBtn').addEventListener('click', ()=>{
+  const t=(document.getElementById('srcText').value||'').trim()||'WARP';
+  srcFromText(t); P.srcMode=1; const su=document.getElementById('srcUse'); if(su) su.checked=true;
+});
+// pixel-sort source bake controls (re-bake on change)
+['psort_low','psort_high'].forEach(id=>{ const el=document.getElementById(id), v=document.getElementById(id+'V');
+  el.value=P[id]; if(v) v.textContent=P[id].toFixed(2);
+  el.addEventListener('input', ()=>{ P[id]=parseFloat(el.value); if(v) v.textContent=P[id].toFixed(2); });
+  el.addEventListener('change', ()=> resortSource()); });
+document.getElementById('psort_on').addEventListener('change', e=>{ P.psort_on=e.target.checked; resortSource(); });
+document.getElementById('psort_down').addEventListener('change', e=>{ P.psort_down=e.target.checked; resortSource(); });
+
+// field shape + mask controls (re-render the field texture on change)
+const FSHAPE_SLIDERS=[['f_thick',v=>String(v|0)],['f_blur',v=>String(v|0)],['f_size',v=>v.toFixed(2)],['f_rot',v=>String(v|0)]];
+const FMASK_SLIDERS=[['fm_rot',v=>String(v|0)],['fm_soft',v=>v.toFixed(2)],['fm_size',v=>v.toFixed(2)]];
+FSHAPE_SLIDERS.forEach(([id,fmt])=>{ const el=document.getElementById(id), v=document.getElementById(id+'V'); el.value=P[id]; if(v) v.textContent=fmt(P[id]);
+  el.addEventListener('input',()=>{ P[id]=parseFloat(el.value); if(v) v.textContent=fmt(P[id]); renderFieldShape(); }); });
+FMASK_SLIDERS.forEach(([id,fmt])=>{ const el=document.getElementById(id), v=document.getElementById(id+'V'); el.value=P[id]; if(v) v.textContent=fmt(P[id]);
+  el.addEventListener('input',()=>{ P[id]=parseFloat(el.value); if(v) v.textContent=fmt(P[id]); renderFieldMask(); }); });
+document.getElementById('f_outline').addEventListener('change', e=>{ P.f_outline=e.target.checked; renderFieldShape(); });
+document.getElementById('fm_invert').addEventListener('change', e=>{ P.fm_invert=e.target.checked; renderFieldMask(); });
+document.getElementById('fm_type').addEventListener('change', e=>{ P.fm_type=parseInt(e.target.value); renderFieldMask(); });
+const fsWrap=document.getElementById('fieldShapes');
+Object.keys(FIELD_SHAPES).forEach(name=>{ const b=document.createElement('button'); b.className='btn chip'; b.textContent=name; b.addEventListener('click',()=> setFieldShape(FIELD_SHAPES[name])); fsWrap.appendChild(b); });
+document.getElementById('fieldSvg').addEventListener('change', e=>{ const f=e.target.files&&e.target.files[0]; if(!f) return; const r=new FileReader(); r.onload=()=>{ const def=parseFieldSVG(r.result); if(def){ fieldShapeDef=def; renderFieldShape(); } else alert('Could not read that SVG (paths / basic shapes only).'); }; r.readAsText(f); });
+// dot dither shape + colors
+document.getElementById('dot_shape').addEventListener('change', e=>{ P.dot_shape=parseInt(e.target.value); });
+document.getElementById('dot_col').addEventListener('input', e=>{ P.dot_col=e.target.value; });
+document.getElementById('dot_bg').addEventListener('input', e=>{ P.dot_bg=e.target.value; });
+
+// ---------- record loop -> WebM ----------
+document.getElementById('recBtn').addEventListener('click', (e)=>{
+  const btn=e.target;
+  if(!canvas.captureStream || typeof MediaRecorder==='undefined'){ alert('Recording not supported in this browser.'); return; }
+  P.seamless=true; const sm=document.getElementById('seamless'); if(sm) sm.checked=true;
+  P.time=0; playing=true; document.getElementById('playBtn').textContent='⏸ Pause';
+  const stream=canvas.captureStream(60);
+  const mime = (MediaRecorder.isTypeSupported&&MediaRecorder.isTypeSupported('video/webm;codecs=vp9'))?'video/webm;codecs=vp9':'video/webm';
+  let rec; try{ rec=new MediaRecorder(stream,{mimeType:mime, videoBitsPerSecond:16000000}); }catch(_){ rec=new MediaRecorder(stream); }
+  const chunks=[]; rec.ondataavailable=ev=>{ if(ev.data&&ev.data.size) chunks.push(ev.data); };
+  rec.onstop=()=>{ const blob=new Blob(chunks,{type:'video/webm'}); const url=URL.createObjectURL(blob);
+    const a=document.createElement('a'); a.href=url; a.download='wave-warp-loop.webm'; a.click();
+    setTimeout(()=>URL.revokeObjectURL(url),2000); btn.textContent='⏺ Record loop (WebM)'; btn.disabled=false; };
+  btn.textContent='● Recording…'; btn.disabled=true;
+  rec.start();
+  const durMs = (P.loopLen / Math.max(0.05,P.gspeed)) * 1000;
+  setTimeout(()=>{ try{ rec.stop(); }catch(_){} }, durMs);
+});
+
+// transport
+const playBtn = document.getElementById('playBtn'), scrub = document.getElementById('scrub');
+playBtn.addEventListener('click', ()=>{ playing=!playing; playBtn.textContent = playing?'⏸':'▶'; });
+scrub.addEventListener('input', ()=>{ playing=false; playBtn.textContent='▶'; P.time=parseFloat(scrub.value); });
+document.getElementById('replayBtn').addEventListener('click', ()=>{ P.time=0; colorPhase=0; playing=true; playBtn.textContent='⏸'; });
+
+// gradient editor
+function renderGradHandles(){
+  const wrap = document.getElementById('gradHandles'); if(!wrap) return; wrap.innerHTML='';
+  const bar = document.getElementById('gradBar');
+  stops.forEach(s=>{
+    const h = document.createElement('div'); h.className='ghdl';
+    h.style.left = (s.pos*100)+'%'; h.style.background = s.color;
+    h.addEventListener('pointerdown', e=>{
+      e.preventDefault(); h.setPointerCapture(e.pointerId);
+      const rect = bar.getBoundingClientRect();
+      const move = ev=>{ let p=(ev.clientX-rect.left)/rect.width; p=Math.max(0,Math.min(1,p));
+        s.pos=p; h.style.left=(p*100)+'%'; updateLUT(); renderStops(); };
+      const up = ()=>{ window.removeEventListener('pointermove',move); window.removeEventListener('pointerup',up); };
+      window.addEventListener('pointermove',move); window.addEventListener('pointerup',up);
+    });
+    wrap.appendChild(h);
+  });
+}
+function renderStops(){
+  const wrap = document.getElementById('stops'); wrap.innerHTML='';
+  stops.slice().sort((a,b)=>a.pos-b.pos).forEach(s=>{
+    const row = document.createElement('div'); row.className='stop';
+    row.innerHTML = `<input class="spos" type="text" value="${Math.round(s.pos*100)}%">
+      <div class="scol"><input type="color" value="${s.color}"><input class="shex" type="text" maxlength="6" value="${s.color.slice(1).toUpperCase()}"></div>
+      <span class="x" title="Remove">−</span>`;
+    const pos=row.querySelector('.spos'), c=row.querySelector('input[type=color]'), hex=row.querySelector('.shex'), x=row.querySelector('.x');
+    pos.addEventListener('change', ()=>{ let v=parseFloat(pos.value); if(isNaN(v)) v=s.pos*100; v=Math.max(0,Math.min(100,v)); s.pos=v/100; updateLUT(); renderStops(); });
+    c.addEventListener('input', ()=>{ s.color=c.value; hex.value=c.value.slice(1).toUpperCase(); updateLUT(); renderGradHandles(); });
+    hex.addEventListener('change', ()=>{ const h=hex.value.replace(/[^0-9a-fA-F]/g,'').slice(0,6);
+      if(h.length===6){ s.color='#'+h.toLowerCase(); c.value=s.color; updateLUT(); renderGradHandles(); }
+      else hex.value=s.color.slice(1).toUpperCase(); });
+    x.addEventListener('click', ()=>{ if(stops.length>2){ stops.splice(stops.indexOf(s),1); renderStops(); updateLUT(); } });
+    wrap.appendChild(row);
+  });
+  renderGradHandles();
+}
+document.getElementById('addStop').addEventListener('click', ()=>{ stops.push({pos:0.5,color:'#ffffff'}); renderStops(); updateLUT(); });
+document.getElementById('revStops').addEventListener('click', ()=>{ stops.forEach(s=>s.pos=1-s.pos); renderStops(); updateLUT(); });
+
+// copy settings (everything except the playback clock) for pasting back
+document.getElementById('copyBtn').addEventListener('click', (e)=>{
+  const {time, ...rest} = P;
+  const payload = JSON.stringify({ ...rest, stops }, null, 2);
+  const done = ok => { e.target.textContent = ok?'✓ Copied!':'⚠ Copy failed'; setTimeout(()=> e.target.textContent='Copy settings', 1400); };
+  if(navigator.clipboard && window.isSecureContext){
+    navigator.clipboard.writeText(payload).then(()=>done(true), ()=>done(false));
+  } else {
+    const ta=document.createElement('textarea'); ta.value=payload; ta.style.position='fixed'; ta.style.opacity='0';
+    document.body.appendChild(ta); ta.select();
+    let ok=false; try{ ok=document.execCommand('copy'); }catch(_){}
+    document.body.removeChild(ta); done(ok);
+  }
+});
+
+// reset
+document.getElementById('resetBtn').addEventListener('click', ()=>{
+  const t=P.time; P=PRESET(); P.time=t; stops=DEFAULT_STOPS.map(s=>({...s})); syncAllControls();
+  if(typeof srcBypass!=='undefined'){ srcBypass.active=false; srcBypass.saved=null; if(typeof updateSourceBtn==='function') updateSourceBtn(); }
+});
+
+// ---------- randomize ----------
+const rand = (a,b)=> a + (b-a)*Math.random();
+const pick = arr => arr[Math.floor(Math.random()*arr.length)];
+document.getElementById('rndBtn').addEventListener('click', ()=>{
+  const t=P.time; P=PRESET(); P.time=t;
+  P.w1on=true; P.w1h=Math.round(rand(70,260)); P.w1w=Math.round(rand(150,720)); P.w1s=+rand(0.3,1.6).toFixed(2);
+  P.w1d=pick([0,90,180,270]); P.w1t=pick([0,0,0,1,2]); // bias toward semicircle
+  P.w2on=Math.random()<0.85; P.w2h=Math.round(rand(50,210)); P.w2w=Math.round(rand(50,320)); P.w2s=+rand(0.3,1.3).toFixed(2);
+  P.w2d=pick([0,90,180,270]); P.w2t=pick([0,0,0,1,3]);
+  P.mon=Math.random()<0.8; P.mhon=Math.random()<0.5; P.ma=pick([0,90,180,270]);
+  P.kon=Math.random()<0.4; P.kseg=Math.round(rand(3,12)); P.krot=Math.round(rand(0,360));
+  P.radial=Math.random()<0.3; P.cross=Math.random()<0.3;
+  P.blur=Math.round(rand(50,210)); P.stripW=Math.round(rand(140,460)); P.gradHalf=Math.round(rand(500,950));
+  P.gspeed=+rand(0.15,0.6).toFixed(2); P.cycles=pick([1,1,1,2,3]); P.cps=Math.random()<0.3?+rand(0.05,0.4).toFixed(2):0;
+  stops = pick(Object.values(PALETTES)).map(s=>({...s}));
+  // post-fx — only when the toggle is on (P reset above already left them off)
+  const rndFx=document.getElementById('rndFx');
+  if(rndFx && rndFx.checked){
+    const m=Math.random();                                   // one mosaic effect at most
+    if(m<0.16){ P.pix_on=true; P.pix=Math.round(rand(6,30)); }
+    else if(m<0.30){ P.half_on=true; P.half_scale=pick([6,8,10,12]); P.half_ang=Math.round(rand(0,45)); }
+    else if(m<0.42){ P.dots_on=true; P.dots_space=pick([6,8,10]); }
+    if(Math.random()<0.18){ P.edge_on=true; P.edge_amt=+rand(2,7).toFixed(1); }
+    if(Math.random()<0.35){ P.grain_on=true; P.grain=+rand(0.05,0.25).toFixed(2); }
+    if(Math.random()<0.25){ P.dot_on=true; P.dot_space=pick([5,6,8,10]); }
+  }
+  syncAllControls();
+});
+
+// ---------- saved preset slots (localStorage) ----------
+const LS_KEY='wwl_presets';
+const loadPresets = ()=>{ try{ return JSON.parse(localStorage.getItem(LS_KEY)||'{}'); }catch(_){ return {}; } };
+const savePresets = obj => { try{ localStorage.setItem(LS_KEY, JSON.stringify(obj)); }catch(_){} };
+function renderPresetList(){
+  const wrap=document.getElementById('presetList'); wrap.innerHTML='';
+  const all=loadPresets();
+  Object.keys(all).forEach(name=>{
+    const chip=document.createElement('span'); chip.className='pchip';
+    chip.innerHTML=`<span class="pload">${name}</span><span class="pdel">✕</span>`;
+    chip.querySelector('.pload').addEventListener('click', ()=>{
+      const {time, stops:st, ...rest}=all[name]; const t=P.time; P={...PRESET(),...rest}; P.time=t;
+      stops=(st||DEFAULT_STOPS).map(s=>({...s})); syncAllControls();
+    });
+    chip.querySelector('.pdel').addEventListener('click', ()=>{ const a=loadPresets(); delete a[name]; savePresets(a); renderPresetList(); });
+    wrap.appendChild(chip);
+  });
+}
+document.getElementById('saveBtn').addEventListener('click', ()=>{
+  const inp=document.getElementById('presetName');
+  const name=(inp.value||'').trim()||('Look '+(Object.keys(loadPresets()).length+1));
+  const {time, ...rest}=P; const all=loadPresets(); all[name]={...rest, stops}; savePresets(all); inp.value=''; renderPresetList();
+});
+
+// palette presets
+const palWrap = document.getElementById('palettes');
+Object.keys(PALETTES).forEach(name=>{
+  const b = document.createElement('button'); b.className='btn chip'; b.textContent=name;
+  b.addEventListener('click', ()=>{ stops = PALETTES[name].map(s=>({...s})); renderStops(); updateLUT(); });
+  palWrap.appendChild(b);
+});
+const palHead = document.getElementById('palHead');
+palHead.addEventListener('click', ()=>{ const c = palHead.classList.toggle('collapsed'); palWrap.style.display = c ? 'none' : 'flex'; });
+
+// ---------- showcase presets (built-in full looks) ----------
+function applyConfig(cfg){
+  const {stops:st, ...rest}=cfg; const t=P.time;
+  P={...PRESET(), ...rest}; P.time=t;
+  stops=(st||DEFAULT_STOPS).map(s=>({...s}));
+  syncAllControls();
+}
+const SHOWCASE = {
+  'Blue':         ()=>({ ...PRESET(), stops:PALETTES.Ocean }),
+  'Sonar':        ()=>({ ...PRESET(), radial:true, mon:false, mhon:false, w1h:120,w1w:300,w1s:0.6, w2h:80,w2w:150,w2s:0.4, blur:95, gspeed:0.30, stops:PALETTES.Aurora }),
+  'Cymatics':     ()=>({ ...PRESET(), cross:true, mon:true, mhon:true, w1h:120,w1w:300,w1s:0.7, w2h:90,w2w:170,w2s:0.5, blur:80, stops:PALETTES.Ink }),
+  'Chrome Ripple':()=>({ ...PRESET(), radial:true, mon:false, mhon:false, w1h:90,w1w:240,w1s:0.5, w2h:60,w2w:120,w2s:0.35, blur:75, stops:PALETTES.Chrome }),
+  'Aurora Veil':  ()=>({ ...PRESET(), w1h:185,w1w:520,w1s:0.6, w2h:95,w2w:165,w2s:0.42, blur:185, mhon:true, cps:0.15, stops:PALETTES.Aurora }),
+  'Mandala':      ()=>({ ...PRESET(), radial:true, kon:true, kseg:12, krot:0, mon:false, mhon:false, w1h:110,w1w:240,w1s:0.55, w2h:70,w2w:130,w2s:0.4, blur:85, gspeed:0.22, stops:PALETTES.Sunset }),
+  'Inferno':      ()=>({ ...PRESET(), w1t:2, w2t:3, w1h:170,w1w:300,w1s:0.8, w2h:120,w2w:120,w2s:0.6, blur:95, stops:PALETTES.Fire }),
+  'Halftone':     ()=>({ ...PRESET(), w1h:200,w1w:480,w1s:0.6, w2h:120,w2w:120,w2s:0.45, blur:160, mhon:true, half_on:true, half_scale:7, half_ang:20, stops:PALETTES.Ink }),
+  'Retro':        ()=>({ ...PRESET(), w1h:180,w1w:420,w1s:0.7, w2h:110,w2w:110,w2s:0.5, blur:120, pix_on:true, pix:9, grain_on:true, grain:0.14, stops:PALETTES.Sunset }),
+  'Scanlines':    ()=>({ ...PRESET(), w1h:130,w1w:500,w1s:0.5, w2h:80,w2w:160,w2s:0.4, blur:120, mhon:true, post_on:true, post_lv:20, stops:PALETTES.Ink }),
+  'Nebula':       ()=>({ ...PRESET(), cross:true, w1h:150,w1w:420,w1s:0.5, w2h:110,w2w:200,w2s:0.4, blur:170, mhon:true, cps:0.08, stops:PALETTES.Vaporwave }),
+  'Copper':       ()=>({ ...PRESET(), radial:true, kon:true, kseg:8, mon:false, mhon:false, w1h:120,w1w:260,w1s:0.5, w2h:80,w2w:140,w2s:0.4, blur:110, gspeed:0.2, stops:PALETTES.Gold }),
+};
+const showWrap=document.getElementById('showcase'); showWrap.style.display='block';
+const SHOWCASE_GROUPS=[
+  ['Looks', ['Blue','Sonar','Cymatics','Chrome Ripple','Aurora Veil','Mandala','Inferno','Nebula','Copper','Halftone','Retro','Scanlines']],
+];
+SHOWCASE_GROUPS.forEach(([gname,names])=>{
+  const h=document.createElement('div'); h.className='seg'; h.textContent=gname; showWrap.appendChild(h);
+  const row=document.createElement('div'); row.style.cssText='display:flex;flex-wrap:wrap;gap:5px;margin-bottom:6px'; showWrap.appendChild(row);
+  names.forEach(name=>{ if(!SHOWCASE[name]) return; const b=document.createElement('button'); b.className='btn chip'; b.textContent=name;
+    b.addEventListener('click', ()=> applyConfig(SHOWCASE[name]())); row.appendChild(b); });
+});
+
+// ---------- style to build from (changes wave shape on top of current look) ----------
+const STYLES = {
+  'Circle': {w1t:0, w2t:0},
+  'Smooth': {w1t:1, w2t:1, blur:180},
+  'Sharp':  {w1t:2, w2t:2, blur:80},
+  'Square': {w1t:3, w2t:3, blur:70},
+  'Saw':    {w1t:4, w2t:4, blur:90},
+};
+const styleWrap=document.getElementById('styles');
+Object.keys(STYLES).forEach(name=>{
+  const b=document.createElement('button'); b.className='btn chip'; b.textContent=name;
+  b.addEventListener('click', ()=>{ Object.assign(P, STYLES[name]); syncAllControls(); });
+  styleWrap.appendChild(b);
+});
+
+// ---------- static three-column layout: collapsible sections ----------
+['symmetry','source','field','postfx'].forEach(t=>{ const p=document.querySelector(`.panel[data-tab="${t}"]`); if(p) p.classList.add('collapsed'); });
+document.querySelectorAll('.panel').forEach(p=>{ const head=p.querySelector('.phead'); if(head) head.addEventListener('click', ()=> p.classList.toggle('collapsed')); });
+const railReset=document.getElementById('railReset'); if(railReset) railReset.addEventListener('click', ()=> document.getElementById('resetBtn').click());
+
+// ---------- strip gradient-height handles (drag to set how tall the gradient is) ----------
+const GRAD_EDGE_F=0.78;   // handle sits at the visible colour edge, not the (invisible) navy endpoint
+const _stage=document.getElementById('stage');
+const _gradEdit=document.getElementById('gradedit');
+const _gLine=document.getElementById('gline'), _ghTop=document.getElementById('ghTop'), _ghBot=document.getElementById('ghBot');
+function updateGradEdit(){
+  if(!_gradEdit) return;
+  const srcP=document.querySelector('.panel[data-tab="source"]');
+  const show = srcP && !srcP.classList.contains('collapsed') && (P.srcMode||0)===0;
+  if(!show){ _gradEdit.style.display='none'; return; }
+  _gradEdit.style.display='block';
+  const W=_stage.clientWidth, H=_stage.clientHeight;
+  const cx=W*0.5, half=P.gradHalf/1200*GRAD_EDGE_F;     // handle at the visible colour edge
+  const m=8;                                            // keep the 14px handles fully on-screen
+  const topY=Math.max(m,Math.min(H-m,(P.gradCenter-half)*H));
+  const botY=Math.max(m,Math.min(H-m,(P.gradCenter+half)*H));
+  _gLine.style.left=cx+'px'; _gLine.style.top=topY+'px'; _gLine.style.height=Math.max(0,botY-topY)+'px';
+  _ghTop.style.left=cx+'px'; _ghTop.style.top=topY+'px';
+  _ghBot.style.left=cx+'px'; _ghBot.style.top=botY+'px';
+}
+function _gradDrag(which){
+  return e=>{ e.preventDefault(); e.stopPropagation();
+    const rect=_stage.getBoundingClientRect(), H=Math.max(1,rect.height);
+    const mv=ev=>{
+      const yc=Math.min(1,Math.max(0,(ev.clientY-rect.top)/H));
+      const d = which==='top' ? Math.max(0, P.gradCenter-yc) : Math.max(0, yc-P.gradCenter);
+      P.gradHalf=Math.min(1200,Math.max(20,d/GRAD_EDGE_F*1200));   // drop point = visible colour edge
+      const cs=document.getElementById('ctl_gradHalf'); if(cs){ cs.value=P.gradHalf; const vv=document.getElementById('val_gradHalf'); if(vv) vv.textContent=Math.round(P.gradHalf); }
+      updateGradEdit();
+    };
+    const up=()=>{ document.removeEventListener('mousemove',mv); document.removeEventListener('mouseup',up); };
+    document.addEventListener('mousemove',mv); document.addEventListener('mouseup',up);
+  };
+}
+if(_ghTop) _ghTop.addEventListener('mousedown', _gradDrag('top'));
+if(_ghBot) _ghBot.addEventListener('mousedown', _gradDrag('bot'));
+
+// ---------- field: draw a custom shape / drag to move / preview the mask ----------
+const fieldOverlay=document.getElementById('fieldOverlay');
+const foCtx=fieldOverlay?fieldOverlay.getContext('2d'):null;
+let fieldDraw={active:false, pts:[]};
+const fieldDrawBtn=document.getElementById('fieldDrawBtn');
+function updateDrawBtn(){ if(!fieldDrawBtn) return;
+  fieldDrawBtn.textContent=fieldDraw.active?'Drawing… click near start to close':'Draw shape';
+  fieldDrawBtn.style.color=fieldDraw.active?'#cfe0ff':''; fieldDrawBtn.style.borderColor=fieldDraw.active?'#6b6bff':''; }
+if(fieldDrawBtn) fieldDrawBtn.addEventListener('click', ()=>{
+  fieldDraw.active=!fieldDraw.active; fieldDraw.pts=[];
+  if(fieldDraw.active){ P.field_on=true; const fc=document.getElementById('field_on'); if(fc) fc.checked=true; }
+  updateDrawBtn();
+});
+function finishFieldDraw(){
+  const pts=fieldDraw.pts; fieldDraw.active=false;
+  if(pts.length<3){ fieldDraw.pts=[]; updateDrawBtn(); return; }
+  const q=pts.map(p=>[p[0]*FW,p[1]*FW]);
+  let minx=1e9,miny=1e9,maxx=-1e9,maxy=-1e9;
+  q.forEach(p=>{ minx=Math.min(minx,p[0]); miny=Math.min(miny,p[1]); maxx=Math.max(maxx,p[0]); maxy=Math.max(maxy,p[1]); });
+  const w=Math.max(1,maxx-minx), h=Math.max(1,maxy-miny);
+  fieldShapeDef={ d:'M'+q.map(p=>p[0].toFixed(1)+' '+p[1].toFixed(1)).join(' L')+' Z', minx, miny, w, h };
+  P.f_size=Math.max(w,h)/FW; P.f_px=(minx+w/2)/FW; P.f_py=(miny+h/2)/FW; P.f_rot=0; P.field_on=true;
+  fieldDraw.pts=[]; updateDrawBtn(); renderFieldShape(); syncAllControls();
+}
+if(fieldOverlay){
+  fieldOverlay.addEventListener('pointerdown', e=>{
+    e.preventDefault();
+    const rect=_stage.getBoundingClientRect();
+    const nx=(e.clientX-rect.left)/rect.width, ny=(e.clientY-rect.top)/rect.height;
+    if(fieldDraw.active){
+      if(fieldDraw.pts.length>=3){ const f=fieldDraw.pts[0];
+        if(Math.hypot((f[0]-nx)*rect.width,(f[1]-ny)*rect.height)<=10){ finishFieldDraw(); return; } }
+      fieldDraw.pts.push([Math.min(1,Math.max(0,nx)),Math.min(1,Math.max(0,ny))]);
+    } else if(P.field_on){                              // drag to move the shape
+      const move=ev=>{ const mx=(ev.clientX-rect.left)/rect.width, my=(ev.clientY-rect.top)/rect.height;
+        P.f_px=Math.min(1,Math.max(0,mx)); P.f_py=Math.min(1,Math.max(0,my)); renderFieldShape(); };
+      move(e);
+      const up=()=>{ document.removeEventListener('pointermove',move); document.removeEventListener('pointerup',up); };
+      document.addEventListener('pointermove',move); document.addEventListener('pointerup',up);
+    }
+  });
+}
+function updateFieldEdit(){
+  if(!fieldOverlay) return;
+  const fp=document.querySelector('.panel[data-tab="field"]');
+  const open=fp && !fp.classList.contains('collapsed');
+  const interactive=open && (fieldDraw.active || P.field_on);
+  fieldOverlay.style.pointerEvents=interactive?'auto':'none';
+  fieldOverlay.style.cursor=fieldDraw.active?'crosshair':(P.field_on?'move':'default');
+  const showMask=open && P.fm_show && P.fm_type>0;
+  // keep the overlay in the DOM flow whenever it must catch drags OR draw something —
+  // a display:none element receives no pointer events, which broke drag-to-move.
+  if(!(interactive || showMask || fieldDraw.pts.length>0)){ fieldOverlay.style.display='none'; return; }
+  fieldOverlay.style.display='block';
+  const W=_stage.clientWidth, H=_stage.clientHeight;
+  if(fieldOverlay.width!==W||fieldOverlay.height!==H){ fieldOverlay.width=W; fieldOverlay.height=H; }
+  const c=foCtx; c.clearRect(0,0,W,H);
+  if(showMask){ c.globalAlpha=0.5; c.drawImage(fMaskC,0,0,W,H); c.globalAlpha=1; }
+  const pts=fieldDraw.pts;
+  if(pts.length){
+    c.strokeStyle='#7d9bff'; c.lineWidth=2; c.beginPath();
+    pts.forEach((p,i)=>{ const x=p[0]*W,y=p[1]*H; i?c.lineTo(x,y):c.moveTo(x,y); });
+    if(!fieldDraw.active) c.closePath();
+    c.stroke();
+    pts.forEach((p,i)=>{ const x=p[0]*W,y=p[1]*H; c.beginPath(); c.arc(x,y,i===0?6:4,0,7); c.fillStyle=i===0?'#fff':'#7d9bff'; c.fill(); });
+  }
+}
+
+// ---------- two-page mode switch (Pattern | Thermal) ----------
+const modePatternBtn=document.getElementById('modePattern'), modeThermalBtn=document.getElementById('modeThermal');
+function setMode(m){
+  const thermal = m==='thermal';
+  document.body.classList.toggle('mode-thermal', thermal);
+  modePatternBtn.classList.toggle('on', !thermal);
+  modeThermalBtn.classList.toggle('on', thermal);
+}
+modePatternBtn.addEventListener('click', ()=>setMode('pattern'));
+modeThermalBtn.addEventListener('click', ()=>setMode('thermal'));
+setMode('pattern');
+// thermal effect selector — shows the active effect's canvas + panel
+const THERM={eff:'flow1'};
+function setThermEffect(eff){ THERM.eff=eff;
+  document.querySelectorAll('#thermEffects .theff').forEach(b=>b.classList.toggle('on', b.dataset.eff===eff));
+  document.querySelectorAll('#thermStage .effcanvas').forEach(c=>c.hidden = c.dataset.eff!==eff);
+  document.querySelectorAll('#thermPanel .effpanel').forEach(p=>p.hidden = p.dataset.eff!==eff);
+}
+document.querySelectorAll('#thermEffects .theff').forEach(b=>b.addEventListener('click', ()=>setThermEffect(b.dataset.eff)));
+setThermEffect('flow1');
+
+// ---------- THERMAL page — column-radiate effect (isolated: own GL context + state) ----------
+(function(){
+  const TC=document.getElementById('flow1Canvas');
+  const tgl=TC.getContext('webgl',{preserveDrawingBuffer:true});
+  if(!tgl){ document.getElementById('thermPanel').insertAdjacentHTML('beforeend','<p class="hint">WebGL unavailable.</p>'); return; }
+  const TDEF=()=>({
+    stops:[
+      {pos:0.00,color:'#2e100e'},{pos:0.14,color:'#46141e'},{pos:0.26,color:'#782878'},
+      {pos:0.34,color:'#b4283c'},{pos:0.46,color:'#eb3c14'},{pos:0.60,color:'#fa8c32'},
+      {pos:0.74,color:'#f0be8c'},{pos:0.80,color:'#f5e1c8'},{pos:0.90,color:'#fffaeb'},
+    ],
+    cycles:1, speed:0.09, phase:0, lock:0, soft:1, bars:0.5, base:0.45,
+  });
+  let T=TDEF(), tSel=5, tPlaying=true, tPrev=performance.now(), tAcc=0;
+  const TVS='attribute vec2 a;void main(){gl_Position=vec4(a,0.,1.);}';
+  const TFS=`precision highp float;
+  uniform vec2 u_res; uniform sampler2D u_lut;
+  uniform float u_cycles,u_phase,u_offset,u_lock,u_soft,u_bars,u_base;
+  float disc(vec2 p, vec2 c, float r, float s){ float d=distance(p,c);
+    return 1.0/(1.0+exp(clamp((d-r)/max(s*u_soft,1e-4),-30.0,30.0))); }
+  float capsule(vec2 p, vec2 c, float hl, float r, float s){ float dx=max(abs(p.x-c.x)-hl,0.0);
+    float d=sqrt(dx*dx+(p.y-c.y)*(p.y-c.y)); return 1.0/(1.0+exp(clamp((d-r)/max(s*u_soft,1e-4),-30.0,30.0))); }
+  void main(){
+    vec2 p=vec2(gl_FragCoord.x, u_res.y-gl_FragCoord.y)/u_res.y;
+    float cx=(u_res.x/u_res.y)*0.5;
+    float f=0.0;
+    f+=disc(p,vec2(cx,0.155),0.135,0.023);
+    f+=disc(p,vec2(cx,0.425),0.125,0.023);
+    f+=disc(p,vec2(cx,0.665),0.110,0.023);
+    f+=0.5*disc(p,vec2(cx,0.80),0.17,0.085);
+    f+=u_base*disc(p,vec2(cx,0.985),0.37,0.13);
+    f=clamp(f,0.0,1.15);
+    f+=u_bars*capsule(p,vec2(cx,0.155),0.078,0.013,0.010);
+    f+=u_bars*capsule(p,vec2(cx,0.425),0.078,0.013,0.010);
+    f+=u_bars*capsule(p,vec2(cx,0.665),0.085,0.013,0.010);
+    f+=(u_bars+0.05)*capsule(p,vec2(cx,0.915),0.078,0.007,0.004);
+    f=clamp(f,0.0,1.0);
+    float w=(u_lock<0.005)?1.0:1.0-smoothstep(u_lock-0.08,u_lock+0.08,f);   // core-lock weight
+    float t=f*u_cycles + u_phase*w + u_offset;                             // drift (attenuated in core) + manual offset
+    gl_FragColor=vec4(texture2D(u_lut,vec2(fract(t),0.5)).rgb,1.0);        // circular LUT + plain fract, no cap
+  }`;
+  function tsh(ty,src){ const s=tgl.createShader(ty); tgl.shaderSource(s,src); tgl.compileShader(s);
+    if(!tgl.getShaderParameter(s,tgl.COMPILE_STATUS)) throw tgl.getShaderInfoLog(s); return s; }
+  const tprog=tgl.createProgram(); tgl.attachShader(tprog,tsh(tgl.VERTEX_SHADER,TVS)); tgl.attachShader(tprog,tsh(tgl.FRAGMENT_SHADER,TFS));
+  tgl.linkProgram(tprog); tgl.useProgram(tprog);
+  tgl.bindBuffer(tgl.ARRAY_BUFFER,tgl.createBuffer());
+  tgl.bufferData(tgl.ARRAY_BUFFER,new Float32Array([-1,-1,3,-1,-1,3]),tgl.STATIC_DRAW);
+  const tal=tgl.getAttribLocation(tprog,'a'); tgl.enableVertexAttribArray(tal); tgl.vertexAttribPointer(tal,2,tgl.FLOAT,false,0,0);
+  const TU={}; ['u_res','u_lut','u_cycles','u_phase','u_offset','u_lock','u_soft','u_bars','u_base'].forEach(n=>TU[n]=tgl.getUniformLocation(tprog,n));
+  const tlut=tgl.createTexture(); tgl.bindTexture(tgl.TEXTURE_2D,tlut);
+  tgl.texParameteri(tgl.TEXTURE_2D,tgl.TEXTURE_WRAP_S,tgl.REPEAT);            // circular sampling
+  tgl.texParameteri(tgl.TEXTURE_2D,tgl.TEXTURE_WRAP_T,tgl.CLAMP_TO_EDGE);
+  tgl.texParameteri(tgl.TEXTURE_2D,tgl.TEXTURE_MIN_FILTER,tgl.LINEAR);
+  tgl.texParameteri(tgl.TEXTURE_2D,tgl.TEXTURE_MAG_FILTER,tgl.LINEAR);
+  function thx(h){ return [parseInt(h.slice(1,3),16),parseInt(h.slice(3,5),16),parseInt(h.slice(5,7),16)]; }
+  function tSample(t){                                                        // circular: last stop blends into first
+    const s=[...T.stops].sort((a,b)=>a.pos-b.pos); t=((t%1)+1)%1;
+    const ring=[...s,{pos:s[0].pos+1,color:s[0].color}]; let tt=t; if(tt<ring[0].pos) tt+=1;
+    for(let i=0;i<ring.length-1;i++){ const a=ring[i],b=ring[i+1];
+      if(tt>=a.pos&&tt<=b.pos){ const u=(tt-a.pos)/Math.max(b.pos-a.pos,1e-6),A=thx(a.color),B=thx(b.color);
+        return [A[0]+(B[0]-A[0])*u,A[1]+(B[1]-A[1])*u,A[2]+(B[2]-A[2])*u]; } }
+    return thx(s[0].color);
+  }
+  const tgbar=document.getElementById('th_gbar'), tgx=tgbar.getContext('2d'), tgstops=document.getElementById('th_gstops');
+  function tDrawBar(){ const w=tgbar.width,h=tgbar.height; for(let i=0;i<w;i++){ const c=tSample(i/(w-1)); tgx.fillStyle=`rgb(${c[0]|0},${c[1]|0},${c[2]|0})`; tgx.fillRect(i,0,1,h); } }
+  function tUpdateLUT(){ const N=256,d=new Uint8Array(N*4);
+    for(let i=0;i<N;i++){ const c=tSample(i/(N-1)); d[i*4]=c[0]; d[i*4+1]=c[1]; d[i*4+2]=c[2]; d[i*4+3]=255; }
+    tgl.bindTexture(tgl.TEXTURE_2D,tlut); tgl.texImage2D(tgl.TEXTURE_2D,0,tgl.RGBA,N,1,0,tgl.RGBA,tgl.UNSIGNED_BYTE,d); tDrawBar(); }
+  const tStopCol=document.getElementById('th_stopCol'), tStopPos=document.getElementById('th_stopPos');
+  function tSyncStop(){ const s=T.stops[tSel]; if(!s){ tStopPos.textContent='–'; return; } tStopCol.value=s.color; tStopPos.textContent=s.pos.toFixed(3); }
+  function tRebuild(){ tgstops.innerHTML='';
+    T.stops.forEach((s,i)=>{ const el=document.createElement('div'); el.className='th-stop'+(i===tSel?' sel':'');
+      el.style.left=(s.pos*100)+'%'; el.style.background=s.color; el.title=s.pos.toFixed(2);
+      el.addEventListener('pointerdown',ev=>{ ev.preventDefault(); tSel=i; tRebuild(); tSyncStop();
+        const rect=tgstops.getBoundingClientRect();
+        const move=e=>{ T.stops[i].pos=Math.min(1,Math.max(0,(e.clientX-rect.left)/rect.width)); el.style.left=(T.stops[i].pos*100)+'%'; tSyncStop(); tUpdateLUT(); };
+        const up=()=>{ window.removeEventListener('pointermove',move); window.removeEventListener('pointerup',up); };
+        window.addEventListener('pointermove',move); window.addEventListener('pointerup',up); });
+      tgstops.appendChild(el); });
+    tSyncStop();
+  }
+  tStopCol.addEventListener('input',()=>{ if(T.stops[tSel]){ T.stops[tSel].color=tStopCol.value; tRebuild(); tUpdateLUT(); } });
+  tgbar.addEventListener('dblclick',e=>{ const r=tgbar.getBoundingClientRect(),pos=Math.min(1,Math.max(0,(e.clientX-r.left)/r.width));
+    const c=tSample(pos); T.stops.push({pos,color:'#'+[c[0],c[1],c[2]].map(v=>(v|0).toString(16).padStart(2,'0')).join('')});
+    tSel=T.stops.length-1; tRebuild(); tUpdateLUT(); });
+  document.getElementById('th_delStop').addEventListener('click',()=>{ if(T.stops.length<=2) return; T.stops.splice(tSel,1); tSel=Math.max(0,tSel-1); tRebuild(); tUpdateLUT(); });
+  function tBind(id,key,fmt){ const inp=document.getElementById(id),val=document.getElementById(id+'V'); inp.value=T[key]; val.textContent=fmt(T[key]);
+    inp.addEventListener('input',()=>{ T[key]=parseFloat(inp.value); val.textContent=fmt(T[key]); }); }
+  function tBindAll(){ tBind('th_cycles','cycles',v=>v.toFixed(0)); tBind('th_speed','speed',v=>v.toFixed(3)); tBind('th_phase','phase',v=>v.toFixed(3));
+    tBind('th_lock','lock',v=>v.toFixed(2)); tBind('th_soft','soft',v=>v.toFixed(2)); tBind('th_bars','bars',v=>v.toFixed(2)); tBind('th_base','base',v=>v.toFixed(2)); }
+  tBindAll();
+  const tPlayBtn=document.getElementById('th_play');
+  function tSetPlay(p){ tPlaying=p; tPlayBtn.textContent=p?'Pause':'Play'; tPlayBtn.classList.toggle('on',!p); tPrev=performance.now(); }
+  tPlayBtn.addEventListener('click',()=>tSetPlay(!tPlaying));
+  document.getElementById('th_reset').addEventListener('click',()=>{ T=TDEF(); tSel=5; tAcc=0; tBindAll(); tRebuild(); tUpdateLUT(); });
+  document.getElementById('th_export').addEventListener('click',()=>{ tRender(); TC.toBlob(b=>{ const a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download='flow-1.png'; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),2000); },'image/png'); });
+  function tResize(){ const r=TC.getBoundingClientRect(), dpr=Math.min(window.devicePixelRatio||1,2);
+    const w=Math.max(1,Math.round(r.width*dpr)), h=Math.max(1,Math.round(r.height*dpr));
+    if(TC.width!==w||TC.height!==h){ TC.width=w; TC.height=h; tgl.viewport(0,0,w,h); } }
+  function tRender(){ tResize(); tgl.useProgram(tprog); tgl.uniform2f(TU.u_res,TC.width,TC.height);
+    tgl.activeTexture(tgl.TEXTURE0); tgl.bindTexture(tgl.TEXTURE_2D,tlut); tgl.uniform1i(TU.u_lut,0);
+    tgl.uniform1f(TU.u_cycles,T.cycles);
+    const raw=tAcc*T.speed;
+    const drift = T.lock<0.005 ? raw : Math.abs(((raw*0.5)%1+1)%1*2-1);     // one-way vs ping-pong
+    tgl.uniform1f(TU.u_phase,drift); tgl.uniform1f(TU.u_offset,T.phase);
+    tgl.uniform1f(TU.u_lock,T.lock); tgl.uniform1f(TU.u_soft,T.soft); tgl.uniform1f(TU.u_bars,T.bars); tgl.uniform1f(TU.u_base,T.base);
+    tgl.drawArrays(tgl.TRIANGLES,0,3); }
+  function tLoop(now){ if(document.body.classList.contains('mode-thermal') && THERM.eff==='flow1'){ if(tPlaying) tAcc+=(now-tPrev)/1000; tRender(); } tPrev=now; requestAnimationFrame(tLoop); }
+  tRebuild(); tUpdateLUT(); requestAnimationFrame(tLoop);
+})();
+
+// ---------- Flow 2 — shape → 4-pin variable blur → circular Colorama (phase loop) ----------
+(function(){
+  const TC=document.getElementById('flow2Canvas');
+  const tgl=TC.getContext('webgl',{preserveDrawingBuffer:true});
+  if(!tgl){ return; }
+  function thx(h){ return [parseInt(h.slice(1,3),16),parseInt(h.slice(3,5),16),parseInt(h.slice(5,7),16)]; }
+  const F2DEF=()=>({
+    text:'A',
+    pins:[{x:0.13,y:0.51,v:1},{x:0.90,y:0.50,v:1},{x:0.50,y:0.30,v:0},{x:0.50,y:0.84,v:0}],
+    blurMax:1.0, blend:3.4, cycles:1, speed:0.576, phase:0, showMap:false,
+    stops:[{pos:0.00,color:'#0a0400'},{pos:0.10,color:'#8a1e00'},{pos:0.30,color:'#e04800'},{pos:0.50,color:'#ff7a12'},{pos:0.62,color:'#ffb44e'},{pos:0.72,color:'#fff2d6'},{pos:0.84,color:'#f0881e'},{pos:0.96,color:'#521200'}],
+  });
+  let F=F2DEF(), fPin=3, fStop=0, fPlaying=true, fPrev=performance.now(), fAcc=0, fDragPin=-1;
+
+  // ---- source (3:4) -> Gaussian blur pyramid (level 0 = sharp .. 4 = softest) ----
+  const SW=768, SH=1024, NL=5;
+  const srcC=document.createElement('canvas'); srcC.width=SW; srcC.height=SH; const sx=srcC.getContext('2d');
+  const quad=tgl.createBuffer(); tgl.bindBuffer(tgl.ARRAY_BUFFER,quad); tgl.bufferData(tgl.ARRAY_BUFFER,new Float32Array([-1,-1,3,-1,-1,3]),tgl.STATIC_DRAW);
+  function fsh(ty,src){ const s=tgl.createShader(ty); tgl.shaderSource(s,src); tgl.compileShader(s); if(!tgl.getShaderParameter(s,tgl.COMPILE_STATUS)) throw tgl.getShaderInfoLog(s); return s; }
+  function mkProg(fsSrc){ const p=tgl.createProgram(); tgl.attachShader(p,fsh(tgl.VERTEX_SHADER,'attribute vec2 a;void main(){gl_Position=vec4(a,0.,1.);}')); tgl.attachShader(p,fsh(tgl.FRAGMENT_SHADER,fsSrc)); tgl.linkProgram(p); return p; }
+  function useQuad(p){ tgl.useProgram(p); const al=tgl.getAttribLocation(p,'a'); tgl.bindBuffer(tgl.ARRAY_BUFFER,quad); tgl.enableVertexAttribArray(al); tgl.vertexAttribPointer(al,2,tgl.FLOAT,false,0,0); }
+  function mkLevel(w,h){ const t=tgl.createTexture(); tgl.bindTexture(tgl.TEXTURE_2D,t); tgl.texImage2D(tgl.TEXTURE_2D,0,tgl.RGBA,w,h,0,tgl.RGBA,tgl.UNSIGNED_BYTE,null);
+    tgl.texParameteri(tgl.TEXTURE_2D,tgl.TEXTURE_WRAP_S,tgl.CLAMP_TO_EDGE); tgl.texParameteri(tgl.TEXTURE_2D,tgl.TEXTURE_WRAP_T,tgl.CLAMP_TO_EDGE);
+    tgl.texParameteri(tgl.TEXTURE_2D,tgl.TEXTURE_MIN_FILTER,tgl.LINEAR); tgl.texParameteri(tgl.TEXTURE_2D,tgl.TEXTURE_MAG_FILTER,tgl.LINEAR);
+    const f=tgl.createFramebuffer(); tgl.bindFramebuffer(tgl.FRAMEBUFFER,f); tgl.framebufferTexture2D(tgl.FRAMEBUFFER,tgl.COLOR_ATTACHMENT0,tgl.TEXTURE_2D,t,0); return {w,h,tex:t,fbo:f}; }
+  const lv=[], tp=[]; { let w=SW,h=SH; for(let i=0;i<NL;i++){ lv.push(mkLevel(w,h)); tp.push(mkLevel(w,h)); w=Math.max(2,w>>1); h=Math.max(2,h>>1); } }
+  const srcTex=mkLevel(SW,SH).tex;
+  tgl.bindFramebuffer(tgl.FRAMEBUFFER,null);
+  const BLUR=mkProg(`precision highp float; uniform sampler2D u_tex; uniform vec2 u_res,u_dir;
+    void main(){ vec2 uv=gl_FragCoord.xy/u_res; vec2 st=u_dir/u_res;
+      float w0=0.2270,w1=0.1946,w2=0.1216,w3=0.0540,w4=0.0162;
+      vec3 c=texture2D(u_tex,uv).rgb*w0;
+      c+=(texture2D(u_tex,uv+st).rgb+texture2D(u_tex,uv-st).rgb)*w1;
+      c+=(texture2D(u_tex,uv+st*2.0).rgb+texture2D(u_tex,uv-st*2.0).rgb)*w2;
+      c+=(texture2D(u_tex,uv+st*3.0).rgb+texture2D(u_tex,uv-st*3.0).rgb)*w3;
+      c+=(texture2D(u_tex,uv+st*4.0).rgb+texture2D(u_tex,uv-st*4.0).rgb)*w4;
+      gl_FragColor=vec4(c,1.0); }`);
+  const BU={}; ['u_tex','u_res','u_dir'].forEach(n=>BU[n]=tgl.getUniformLocation(BLUR,n));
+  function blurInto(dst,srcT,dir){ tgl.bindFramebuffer(tgl.FRAMEBUFFER,dst.fbo); tgl.viewport(0,0,dst.w,dst.h);
+    tgl.activeTexture(tgl.TEXTURE0); tgl.bindTexture(tgl.TEXTURE_2D,srcT); tgl.uniform1i(BU.u_tex,0);
+    tgl.uniform2f(BU.u_res,dst.w,dst.h); tgl.uniform2f(BU.u_dir,dir[0],dir[1]); tgl.drawArrays(tgl.TRIANGLES,0,3); }
+  function buildPyramid(){ useQuad(BLUR);
+    blurInto(lv[0],srcTex,[0,0]);                        // level 0 = sharp source
+    for(let k=1;k<NL;k++){ blurInto(tp[k],lv[k-1].tex,[1.5,0]); blurInto(lv[k],tp[k].tex,[0,1.5]); }  // downsample + separable blur
+    tgl.bindFramebuffer(tgl.FRAMEBUFFER,null); }
+  function drawSrc(){
+    sx.fillStyle='#000'; sx.fillRect(0,0,SW,SH); sx.fillStyle='#fff'; sx.textAlign='center'; sx.textBaseline='middle';
+    const txt=F.text||'A'; let size=Math.round(SH*0.72); sx.font='900 '+size+'px -apple-system,Arial,sans-serif';
+    while(sx.measureText(txt).width>SW*0.9 && size>40){ size-=20; sx.font='900 '+size+'px -apple-system,Arial,sans-serif'; }
+    sx.fillText(txt,SW/2,SH/2);
+    tgl.bindTexture(tgl.TEXTURE_2D,srcTex); tgl.texImage2D(tgl.TEXTURE_2D,0,tgl.RGBA,tgl.RGBA,tgl.UNSIGNED_BYTE,srcC);
+    tgl.texParameteri(tgl.TEXTURE_2D,tgl.TEXTURE_MIN_FILTER,tgl.LINEAR); tgl.texParameteri(tgl.TEXTURE_2D,tgl.TEXTURE_MAG_FILTER,tgl.LINEAR);
+    buildPyramid();
+  }
+  const FS=`precision highp float;
+  uniform vec2 u_res; uniform float u_asp;
+  uniform sampler2D u_l0,u_l1,u_l2,u_l3,u_l4,u_lut;
+  uniform vec2 u_pn0,u_pn1,u_pn2,u_pn3; uniform float u_v0,u_v1,u_v2,u_v3;
+  uniform float u_blend,u_amt,u_cycles,u_phase,u_offset,u_showMap;
+  float bmap(vec2 pp){
+    vec2 P0=vec2(u_pn0.x*u_asp,u_pn0.y),P1=vec2(u_pn1.x*u_asp,u_pn1.y),P2=vec2(u_pn2.x*u_asp,u_pn2.y),P3=vec2(u_pn3.x*u_asp,u_pn3.y);
+    float w0=1.0/(pow(distance(pp,P0),u_blend)+1e-3), w1=1.0/(pow(distance(pp,P1),u_blend)+1e-3);
+    float w2=1.0/(pow(distance(pp,P2),u_blend)+1e-3), w3=1.0/(pow(distance(pp,P3),u_blend)+1e-3);
+    return (w0*u_v0+w1*u_v1+w2*u_v2+w3*u_v3)/(w0+w1+w2+w3);
+  }
+  void main(){
+    vec2 p=vec2(gl_FragCoord.x, u_res.y-gl_FragCoord.y)/u_res.y;
+    float m=bmap(p);
+    if(u_showMap>0.5){
+      vec3 col=vec3(m);
+      vec2 P0=vec2(u_pn0.x*u_asp,u_pn0.y),P1=vec2(u_pn1.x*u_asp,u_pn1.y),P2=vec2(u_pn2.x*u_asp,u_pn2.y),P3=vec2(u_pn3.x*u_asp,u_pn3.y);
+      float ring=0.0;
+      ring+=smoothstep(0.006,0.002,abs(distance(p,P0)-0.02)); ring+=smoothstep(0.006,0.002,abs(distance(p,P1)-0.02));
+      ring+=smoothstep(0.006,0.002,abs(distance(p,P2)-0.02)); ring+=smoothstep(0.006,0.002,abs(distance(p,P3)-0.02));
+      col=mix(col,vec3(0.42,0.45,1.0),clamp(ring,0.0,1.0));
+      gl_FragColor=vec4(col,1.0); return;
+    }
+    vec2 uv=vec2(p.x/u_asp, p.y);
+    float L=clamp(m*u_amt*4.0, 0.0, 4.0);                       // 0 sharp .. 4 softest
+    vec3 c0=texture2D(u_l0,uv).rgb,c1=texture2D(u_l1,uv).rgb,c2=texture2D(u_l2,uv).rgb,c3=texture2D(u_l3,uv).rgb,c4=texture2D(u_l4,uv).rgb;
+    vec3 c; if(L<1.0) c=mix(c0,c1,L); else if(L<2.0) c=mix(c1,c2,L-1.0); else if(L<3.0) c=mix(c2,c3,L-2.0); else c=mix(c3,c4,L-3.0);
+    float lum=dot(c,vec3(0.299,0.587,0.114));
+    float t=lum*u_cycles + u_phase + u_offset;
+    gl_FragColor=vec4(texture2D(u_lut,vec2(fract(t),0.5)).rgb,1.0);
+  }`;
+  const prog=mkProg(FS);
+  const U={}; ['u_res','u_asp','u_l0','u_l1','u_l2','u_l3','u_l4','u_lut','u_pn0','u_pn1','u_pn2','u_pn3','u_v0','u_v1','u_v2','u_v3','u_blend','u_amt','u_cycles','u_phase','u_offset','u_showMap'].forEach(n=>U[n]=tgl.getUniformLocation(prog,n));
+  const f2lut=tgl.createTexture(); tgl.bindTexture(tgl.TEXTURE_2D,f2lut);
+  tgl.texParameteri(tgl.TEXTURE_2D,tgl.TEXTURE_WRAP_S,tgl.REPEAT); tgl.texParameteri(tgl.TEXTURE_2D,tgl.TEXTURE_WRAP_T,tgl.CLAMP_TO_EDGE);
+  tgl.texParameteri(tgl.TEXTURE_2D,tgl.TEXTURE_MIN_FILTER,tgl.LINEAR); tgl.texParameteri(tgl.TEXTURE_2D,tgl.TEXTURE_MAG_FILTER,tgl.LINEAR);
+  // ---- circular gradient editor ----
+  function f2Sample(t){ const s=[...F.stops].sort((a,b)=>a.pos-b.pos); t=((t%1)+1)%1; const ring=[...s,{pos:s[0].pos+1,color:s[0].color}]; let tt=t; if(tt<ring[0].pos) tt+=1;
+    for(let i=0;i<ring.length-1;i++){ const a=ring[i],b=ring[i+1]; if(tt>=a.pos&&tt<=b.pos){ const u=(tt-a.pos)/Math.max(b.pos-a.pos,1e-6),A=thx(a.color),B=thx(b.color); return [A[0]+(B[0]-A[0])*u,A[1]+(B[1]-A[1])*u,A[2]+(B[2]-A[2])*u]; } } return thx(s[0].color); }
+  const f2gbar=document.getElementById('f2_gbar'), f2gx=f2gbar.getContext('2d'), f2gstops=document.getElementById('f2_gstops');
+  function f2DrawBar(){ const w=f2gbar.width,h=f2gbar.height; for(let i=0;i<w;i++){ const c=f2Sample(i/(w-1)); f2gx.fillStyle=`rgb(${c[0]|0},${c[1]|0},${c[2]|0})`; f2gx.fillRect(i,0,1,h); } }
+  function f2UpdateLUT(){ const N=256,d=new Uint8Array(N*4); for(let i=0;i<N;i++){ const c=f2Sample(i/(N-1)); d[i*4]=c[0];d[i*4+1]=c[1];d[i*4+2]=c[2];d[i*4+3]=255; } tgl.bindTexture(tgl.TEXTURE_2D,f2lut); tgl.texImage2D(tgl.TEXTURE_2D,0,tgl.RGBA,N,1,0,tgl.RGBA,tgl.UNSIGNED_BYTE,d); f2DrawBar(); }
+  const f2StopCol=document.getElementById('f2_stopCol'), f2StopPos=document.getElementById('f2_stopPos');
+  function f2SyncStop(){ const s=F.stops[fStop]; if(!s){ f2StopPos.textContent='–'; return; } f2StopCol.value=s.color; f2StopPos.textContent=s.pos.toFixed(3); }
+  function f2Rebuild(){ f2gstops.innerHTML=''; F.stops.forEach((s,i)=>{ const el=document.createElement('div'); el.className='th-stop'+(i===fStop?' sel':''); el.style.left=(s.pos*100)+'%'; el.style.background=s.color; el.title=s.pos.toFixed(2);
+    el.addEventListener('pointerdown',ev=>{ ev.preventDefault(); fStop=i; f2Rebuild(); f2SyncStop(); const rect=f2gstops.getBoundingClientRect();
+      const move=e=>{ F.stops[i].pos=Math.min(1,Math.max(0,(e.clientX-rect.left)/rect.width)); el.style.left=(F.stops[i].pos*100)+'%'; f2SyncStop(); f2UpdateLUT(); };
+      const up=()=>{ window.removeEventListener('pointermove',move); window.removeEventListener('pointerup',up); }; window.addEventListener('pointermove',move); window.addEventListener('pointerup',up); });
+    f2gstops.appendChild(el); }); f2SyncStop(); }
+  f2StopCol.addEventListener('input',()=>{ if(F.stops[fStop]){ F.stops[fStop].color=f2StopCol.value; f2Rebuild(); f2UpdateLUT(); } });
+  f2gbar.addEventListener('dblclick',e=>{ const r=f2gbar.getBoundingClientRect(),pos=Math.min(1,Math.max(0,(e.clientX-r.left)/r.width)); const c=f2Sample(pos); F.stops.push({pos,color:'#'+[c[0],c[1],c[2]].map(v=>(v|0).toString(16).padStart(2,'0')).join('')}); fStop=F.stops.length-1; f2Rebuild(); f2UpdateLUT(); });
+  document.getElementById('f2_delStop').onclick=()=>{ if(F.stops.length<=2) return; F.stops.splice(fStop,1); fStop=Math.max(0,fStop-1); f2Rebuild(); f2UpdateLUT(); };
+  // ---- pin value toggles ----
+  const f2pins=document.getElementById('f2_pins');
+  function renderPins(){ f2pins.innerHTML=''; F.pins.forEach((pn,i)=>{ const b=document.createElement('button'); b.className='th-sm'; b.textContent=(i+1); b.style.marginLeft='0';
+    b.style.background=pn.v>0.5?'#e8e8e8':'#111'; b.style.color=pn.v>0.5?'#111':'#888'; b.style.borderColor=i===fPin?'#6b6bff':'#2a2a26';
+    b.title=pn.v>0.5?'white = blur':'black = sharp';
+    b.onclick=()=>{ pn.v=pn.v>0.5?0:1; fPin=i; renderPins(); }; f2pins.appendChild(b); }); }
+  // ---- sliders ----
+  const F2SL=[['f2_blurMax','blurMax',v=>v.toFixed(2)],['f2_blend','blend',v=>v.toFixed(1)],['f2_cycles','cycles',v=>v.toFixed(0)],['f2_speed','speed',v=>v.toFixed(3)],['f2_phase','phase',v=>v.toFixed(3)]];
+  F2SL.forEach(([id,key,fmt])=>{ document.getElementById(id).addEventListener('input',e=>{ F[key]=parseFloat(e.target.value); document.getElementById(id+'V').textContent=fmt(F[key]); }); });
+  function fSyncSliders(){ F2SL.forEach(([id,key,fmt])=>{ document.getElementById(id).value=F[key]; document.getElementById(id+'V').textContent=fmt(F[key]); }); document.getElementById('f2_text').value=F.text; }
+  document.getElementById('f2_setText').onclick=()=>{ F.text=document.getElementById('f2_text').value||'A'; drawSrc(); };
+  const f2ShowBtn=document.getElementById('f2_showMap');
+  f2ShowBtn.onclick=()=>{ F.showMap=!F.showMap; f2ShowBtn.classList.toggle('on',F.showMap); f2ShowBtn.textContent=F.showMap?'Hide':'Show'; };
+  const f2Play=document.getElementById('f2_play');
+  function f2SetPlay(p){ fPlaying=p; f2Play.textContent=p?'Pause':'Play'; f2Play.classList.toggle('on',!p); fPrev=performance.now(); }
+  f2Play.onclick=()=>f2SetPlay(!fPlaying);
+  document.getElementById('f2_reset').onclick=()=>{ F=F2DEF(); fPin=3; fStop=0; fAcc=0; drawSrc(); fSyncSliders(); renderPins(); f2Rebuild(); f2UpdateLUT(); f2ShowBtn.classList.remove('on'); f2ShowBtn.textContent='Show'; };
+  document.getElementById('f2_export').onclick=()=>{ fRender(); TC.toBlob(b=>{ const a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download='flow-2.png'; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),2000); },'image/png'); };
+  // ---- pin drag on canvas (when the blur map is shown) ----
+  TC.addEventListener('pointerdown',e=>{ if(!F.showMap) return; const rect=TC.getBoundingClientRect(), asp=rect.width/rect.height;
+    const uvx=(e.clientX-rect.left)/rect.width, uvy=(e.clientY-rect.top)/rect.height;
+    let best=-1,bd=1e9; F.pins.forEach((pn,i)=>{ const d=Math.hypot((pn.x-uvx)*asp,pn.y-uvy); if(d<bd){bd=d;best=i;} });
+    if(bd>0.07) return; fDragPin=best; fPin=best; renderPins();
+    const move=ev=>{ F.pins[fDragPin].x=Math.min(1,Math.max(0,(ev.clientX-rect.left)/rect.width)); F.pins[fDragPin].y=Math.min(1,Math.max(0,(ev.clientY-rect.top)/rect.height)); };
+    const up=()=>{ fDragPin=-1; window.removeEventListener('pointermove',move); window.removeEventListener('pointerup',up); };
+    window.addEventListener('pointermove',move); window.addEventListener('pointerup',up); });
+  // ---- render / loop ----
+  function fResize(){ const r=TC.getBoundingClientRect(), dpr=Math.min(window.devicePixelRatio||1,2); const w=Math.max(1,Math.round(r.width*dpr)), h=Math.max(1,Math.round(r.height*dpr)); if(TC.width!==w||TC.height!==h){ TC.width=w; TC.height=h; tgl.viewport(0,0,w,h); } }
+  function fRender(){ fResize(); tgl.bindFramebuffer(tgl.FRAMEBUFFER,null); useQuad(prog); tgl.viewport(0,0,TC.width,TC.height);
+    tgl.uniform2f(U.u_res,TC.width,TC.height); tgl.uniform1f(U.u_asp,TC.width/TC.height);
+    tgl.activeTexture(tgl.TEXTURE0); tgl.bindTexture(tgl.TEXTURE_2D,lv[0].tex); tgl.uniform1i(U.u_l0,0);
+    tgl.activeTexture(tgl.TEXTURE1); tgl.bindTexture(tgl.TEXTURE_2D,lv[1].tex); tgl.uniform1i(U.u_l1,1);
+    tgl.activeTexture(tgl.TEXTURE2); tgl.bindTexture(tgl.TEXTURE_2D,lv[2].tex); tgl.uniform1i(U.u_l2,2);
+    tgl.activeTexture(tgl.TEXTURE3); tgl.bindTexture(tgl.TEXTURE_2D,lv[3].tex); tgl.uniform1i(U.u_l3,3);
+    tgl.activeTexture(tgl.TEXTURE4); tgl.bindTexture(tgl.TEXTURE_2D,lv[4].tex); tgl.uniform1i(U.u_l4,4);
+    tgl.activeTexture(tgl.TEXTURE5); tgl.bindTexture(tgl.TEXTURE_2D,f2lut); tgl.uniform1i(U.u_lut,5);
+    tgl.uniform2f(U.u_pn0,F.pins[0].x,F.pins[0].y); tgl.uniform2f(U.u_pn1,F.pins[1].x,F.pins[1].y); tgl.uniform2f(U.u_pn2,F.pins[2].x,F.pins[2].y); tgl.uniform2f(U.u_pn3,F.pins[3].x,F.pins[3].y);
+    tgl.uniform1f(U.u_v0,F.pins[0].v); tgl.uniform1f(U.u_v1,F.pins[1].v); tgl.uniform1f(U.u_v2,F.pins[2].v); tgl.uniform1f(U.u_v3,F.pins[3].v);
+    tgl.uniform1f(U.u_blend,F.blend); tgl.uniform1f(U.u_amt,F.blurMax); tgl.uniform1f(U.u_cycles,F.cycles);
+    tgl.uniform1f(U.u_phase,fAcc*F.speed); tgl.uniform1f(U.u_offset,F.phase); tgl.uniform1f(U.u_showMap,F.showMap?1:0);
+    tgl.drawArrays(tgl.TRIANGLES,0,3); }
+  function fLoop(now){ if(document.body.classList.contains('mode-thermal') && THERM.eff==='flow2'){ if(fPlaying) fAcc+=(now-fPrev)/1000; fRender(); } fPrev=now; requestAnimationFrame(fLoop); }
+  drawSrc(); fSyncSliders(); renderPins(); f2Rebuild(); f2UpdateLUT(); requestAnimationFrame(fLoop);
+})();
+
+renderPresetList();
+syncAllControls();
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
