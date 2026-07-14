@@ -4,50 +4,140 @@
     {
       "name": "logos-tool",
       "runtimeExecutable": "python3",
-      "runtimeArgs": ["-m", "http.server", "4599", "--directory", "Tools/product-logos-slide-tool"],
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "4599",
+        "--directory",
+        "Tools/product-logos-slide-tool"
+      ],
       "port": 4599
     },
     {
       "name": "weekly-sync",
       "runtimeExecutable": "python3",
-      "runtimeArgs": ["-m", "http.server", "3461", "--directory", "Tools/Weekly Sync"],
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "3461",
+        "--directory",
+        "Tools/Weekly Sync"
+      ],
       "port": 3461
     },
     {
       "name": "replica",
       "runtimeExecutable": "python3",
-      "runtimeArgs": ["-m", "http.server", "4710", "--directory", "automattic-design-replica"],
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "4710",
+        "--directory",
+        "automattic-design-replica"
+      ],
       "port": 4710
+    },
+    {
+      "name": "replica-alt",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "4713",
+        "--directory",
+        "automattic-design-replica"
+      ],
+      "port": 4713
     },
     {
       "name": "text-effects",
       "runtimeExecutable": "python3",
-      "runtimeArgs": ["-m", "http.server", "5959", "--directory", "text-effects"],
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "5959",
+        "--directory",
+        "text-effects"
+      ],
       "port": 5959
     },
     {
       "name": "dashboard",
       "runtimeExecutable": "python3",
-      "runtimeArgs": ["-m", "http.server", "3470", "--directory", "Dashboard"],
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "3470",
+        "--directory",
+        "Dashboard"
+      ],
       "port": 3470
     },
     {
       "name": "buttons",
       "runtimeExecutable": "python3",
-      "runtimeArgs": ["-m", "http.server", "4811"],
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "4811"
+      ],
       "port": 4811
     },
     {
       "name": "o2-footer-replica",
       "runtimeExecutable": "python3",
-      "runtimeArgs": ["-m", "http.server", "4822", "--directory", "Button interaction animations"],
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "4822",
+        "--directory",
+        "Button interaction animations"
+      ],
       "port": 4822
     },
     {
       "name": "wave-warp-lab",
       "runtimeExecutable": "python3",
-      "runtimeArgs": ["-m", "http.server", "5353"],
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "5353"
+      ],
       "port": 5353
+    },
+    {
+      "name": "saffron-motion-lab",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "5454"
+      ],
+      "port": 5454
+    },
+    {
+      "name": "fragment-shader-art",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "4901",
+        "--directory",
+        "/private/tmp/claude-501/-Users-automattnick-Desktop-Claude-Work/09638795-b510-4d84-966c-8e1eb625bc20/scratchpad"
+      ],
+      "port": 4901
+    },
+    {
+      "name": "shader-lab",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "4902",
+        "--directory",
+        "shader-lab"
+      ],
+      "port": 4902
     }
   ]
 }

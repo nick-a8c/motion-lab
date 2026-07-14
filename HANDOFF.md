@@ -1,11 +1,13 @@
 # Motion Lab — Handoff
 
-A single-file, WebGL-based "motion lab" (formerly "Wave Lab"). It now has **two pages**, switched by a top-center
-`PATTERN | THERMAL` pill:
-- **Pattern** — the original tool: gradient strip → Wave Warp ×2 → Mirror → Blur → Colorama,
-  grown into a full generative + glitch playground (three-column UI). §1–§15 are all Pattern.
-- **Thermal** — a newer page for building fresh effects from scratch, each isolated. Two so far:
-  **Flow 1** (column-radiate) and **Flow 2** (shape → variable blur → Colorama). See **§16**.
+A single-file, WebGL-based "motion lab" (formerly "Wave Lab"). **One page**: gradient strip (or an
+SVG shape) → Wave Warp ×2 → Mirror → Blur → Colorama, grown into a full generative + glitch
+playground (three-column UI).
+
+**The Thermal page was removed entirely** (2026-07-14) — the `PATTERN | THERMAL` pill, the whole
+`#thermal` page, Flow 1 and Flow 2, and all their CSS/JS. That work moved to the Shader Lab (which
+now carries it as its effect **07 Thermal**). Everything here is the former Pattern page; it's all
+still in git history if any of it needs reviving.
 
 Everything lives in **one file**: `index.html`. No build step, no dependencies.
 
@@ -27,8 +29,13 @@ Everything lives in **one file**: `index.html`. No build step, no dependencies.
   `~/.claude/projects/-Users-automattnick-Desktop-Claude-Work/memory/wave-warp-lab.md`
   (indexed in `MEMORY.md`). Keep it updated.
 
-The default opening look is the user's tuned blue wave-interference (`PRESET()`); the page
-opens with the left Presets/Looks rail and the right Settings rail both visible (see §8).
+The default opening look is the user's saved **"Look 3"**, baked into `PRESET()` + `DEFAULT_STOPS`:
+sine (712 wide) + semicircle (54 wide) waves, **radial** warp, mirrored with a horizontal fold at
+270°, over the **gradient strip**, through a teal→green→aqua→blue→violet ramp with mirror-loop on and
+`cycles 0.25`. Reset and ＋ New return here too.
+**Note:** Look 3 has Shape-**use** OFF, so `srcMode:0` — the default reverted from the SVG shape back
+to the strip. Flip `srcMode:1` in `PRESET()` if the logo should be the opening source again.
+The page opens with the left Presets/Looks rail and the right Settings rail both visible (see §8).
 
 ---
 
@@ -155,9 +162,78 @@ The earlier **Glitch** and **Noise** were already gone.
 
 ---
 
+## 5a. Three tiers: Browse / Simple / Advanced
+
+`#modesw` (top of the left rail) → `setTier()` → `body.mode-browse|simple|advanced` (remembered in
+localStorage). Visible controls: **Browse 13 · Simple 26 · Advanced 74**.
+
+- **Browse** — Looks + Surprise me. Right rail hidden.
+- **Simple** — `#simplePanel`: source (Shape / Strip / **Load SVG-PNG**), five macros, symmetry,
+  colour. The left rail's expert tooling is tagged `.adv-only` and hidden (＋New / ◐Source, Style-to-
+  build-from, the Surprise-me post-FX checkbox grid, Preview-without-FX, Copy settings).
+- **Advanced** — the full panel, untouched.
+
+### The macros are RELATIVE, and that is the whole design
+First build made them **absolute** (each slider mapped 0..1 onto a fixed curve of param values).
+Testing killed it immediately: on the default hand-tuned look, **4 of the 5 macros read "custom"** —
+a tuned look never lands on a macro's curve, so Simple opened full of sliders that meant nothing
+until you overwrote the very look you came to adjust. Absolute macros only work for looks the macros
+themselves made.
+
+So a macro is an **offset from the loaded look**, not a position. Each key is normalised into its own
+range (`MACROS[m].keys = {key:[lo,hi]}`), nudged by ±half the range, and mapped back. Centre = the
+look exactly as loaded, so *every* look — including Surprise-me results — is adjustable, and "drift"
+stops being a concept. `rebase()` re-snapshots `BASE` and re-centres the sliders whenever the look
+changes underneath them (Advanced edit, Look chip, Reset).
+
+- Hovering a macro highlights the Advanced rows it drives — the graduation path. Note Advanced
+  controls have **two id shapes**: generated sliders are `ctl_<key>`, static checkboxes are `<key>`
+  (`ctlEl()` resolves both, or the highlight silently misses the params the macros drive).
+- The "did Advanced change something?" listener must be **bubble phase, not capture** — a capture
+  listener runs *before* the slider's own handler writes to `P`, so it always reads the pre-edit
+  state and never sees the change. (This shipped broken once and looked like a logic bug.)
+- Macro ranges are hand-picked guesses (`Motion` = anim-speed 0.05–1.2, etc.) and are the one part
+  that can only be judged by eye. Tune them in `MACROS`.
+
+### Raster sources
+`Load SVG / PNG…` → `loadSourceFile()`. **PNG/JPG get their own draw path** (`drawImageSource`,
+`P.srcKind='image'`): the SVG path deliberately flattens what it loads into a solid white mask
+(`source-atop`), which turns a photo into a white rectangle. A raster's luminance *is* the signal, so
+it's drawn aspect-fit on black and left alone. Verified: a gradient PNG keeps ~44% midtones through
+the source canvas; the same test on an SVG collapses to 0.3% (just the antialiased edge).
+
+## 5b. Canvas aspect ratio
+
+`#arbar` (fixed pill, top-centre): **16:9 · 4:3 · 1:1 · 4:5 · 9:16**. `AR` + `applyAspect()`.
+Default **1:1**.
+
+- **Sized in JS (`fitBox`), not by CSS `aspect-ratio`.** A canvas has an intrinsic size, so
+  `aspect-ratio` + `max-width/max-height` fights the width/height attributes we set for the GL
+  viewport. A plain contain-fit is unambiguous.
+- The canvas + its overlays live in **`#stageInner`**, which carries the letterboxed box.
+  `resizeCanvas()` and the gradient-handle overlay (`_stage`) measure **stageInner, not #stage** —
+  otherwise the handles detach from the canvas as soon as it letterboxes.
+- **The shape must never stretch with the aspect — it only scales.** `srcCanvas` is a fixed 1024²
+  square with the shape drawn aspect-fit inside it, and `sourceLum()` used to sample it as
+  `p/u_res` — which stretches that square onto the canvas, so the logo squashed the moment the
+  aspect left 1:1. It now **contain-fits**: the square maps to a centred region scaled to the SHORT
+  side (`(p - u_res*0.5)/min(u_res.x,u_res.y) + 0.5`), and anything outside returns 0 (background —
+  not a smeared CLAMP_TO_EDGE border). Measured: the logo's bounding box holds its true 1.09 ratio
+  at 1:1 / 16:9 / 9:16 / 4:5 (it was ~1.95 at 16:9 before).
+- **Trap worth remembering** (it bit the now-deleted Thermal canvas): if a canvas is resized from
+  `getBoundingClientRect()*dpr` and has **no explicit CSS size**, it lays out at its *attribute*
+  size — so the measurement feeds straight back into the attribute and the canvas **doubles every
+  frame** until it swallows the page. Always size from a box you control.
+
+
 ## 6. Source system (Source panel)
 
-- `srcMode`: **0** = analytic gradient strip; **1** = texture (from **Text** only).
+- `srcMode`: **0** = analytic gradient strip; **1** = texture (SVG shape or Text).
+  **`PRESET()` now defaults to `srcMode:1`** — the lab opens warping the SVG shape, not the strip.
+  (The default wave/blur settings warp it hard, so the logo isn't *recognisable* at defaults —
+  drop `blur` or hit **◐ Source** to see the shape itself. That's the warp doing its job, not a bug.)
+
+
 - `srcCanvas` (1024²) is drawn by `srcFromText` (the sole remaining texture source; called once
   with `'WARP'` at load so the texture is never empty).
 - **Removed:** the **Generators** (`srcFromBars/Gradient/Noise/Wavelab/City`, `SRC_GENERATORS`),
@@ -218,8 +294,22 @@ window-manager. (The old dockable/bottom-tab version is preserved verbatim in
 - `#app` is a flex row: **`#leftrail` · `#center` · `#rightrail`**.
 - **Left rail**: brand "Wave Lab", an Input status block, then the **Presets panel** in
   `#leftpresets` — a **New / Source** button row on top, the Showcase "Looks" list, Style chips,
-  Surprise me, rndFx/`fxBypass` toggles, save/preset list, Copy settings — and a
+  Surprise me + its controls, `fxBypass`, save/preset list, Copy settings — and a
   `Follow · About · Changelog` footer.
+  - **Surprise me** (`#rndBtn`) is filtered by three controls beneath it:
+    - `#rndSvg` — "Use the SVG shape as the base". Sets `P.srcMode = 1` (else `0`) on every roll.
+    - `#rndFx` — master "Include Post FX in random" (pre-existing).
+    - `#rndFxList` — a checkbox per post-FX, generated from the **`RND_FX` registry**
+      (`{key, label, on, mosaic|chance, apply()}`). The roll only enables *ticked* effects.
+      `mosaic` effects (Pixelate / Halftone / Dots) all re-grid the image, so **at most one** is
+      ever picked (42% of rolls); the rest fire independently at their own `chance`.
+      Ticked-by-default = the six the randomiser used before the list existed; Posterize / Grade /
+      Chromatic / Pixel sort are newly *available* but start off, so old behaviour is preserved.
+    - `#rndSvg` and the list persist to localStorage (`wwl_rndsvg`, `wwl_rndfxlist`), matching how
+      `#rndFx` already persisted (`wwl_rndfx`).
+    - **Add a post-FX to the randomiser = append one entry to `RND_FX`.** The checkbox builds itself.
+    - Careful: a module-scope `const rndFxCb` already refers to the *master* checkbox; the list's
+      map is `rndFxBoxes`.
   - **New** (`#newBtn`): `applyConfig({...})` with waves/symmetry/field all off → a bare colored
     strip (Colorama kept) to build up from.
   - **Source** (`#srcViewBtn`): master effect bypass. Saves the current `SRC_VIEW_KEYS` toggle
@@ -399,81 +489,3 @@ No automated tests — verify in the live preview:
   proven this way before porting.
 
 ---
-
-## 16. Two-page architecture (Pattern | Thermal)
-
-Everything in §1–§15 is the **Pattern** page. A newer **Thermal** page hosts fresh effects,
-each fully isolated so they can't destabilise Pattern.
-
-### The mode switch
-- `#modebar` (fixed top-center pill) with `#modePattern` / `#modeThermal`. `setMode('pattern'
-  |'thermal')` toggles the `body.mode-thermal` class; CSS hides `#app` and shows `#thermal`
-  (both full-viewport). Default is Pattern.
-- **Pattern is untouched** — it's the entire existing `#app`, just show/hidden. Its loop early-
-  returns while Thermal is active (`if(body.classList.contains('mode-thermal')) return`) so the
-  hidden canvas doesn't render. `resizeCanvas` floors at 64px so a `display:none` `#stage`
-  can't break it.
-
-### Thermal layout & effect multiplexing
-- `#thermal` = **`#thermLeft` (effects list) · `#thermStage` (canvases) · `#thermPanel`
-  (control panels)**.
-- Shared state `const THERM={eff:'flow1'}`. `setThermEffect(eff)` sets `THERM.eff`, toggles the
-  `.theff.on` chip, and shows/hides `.effcanvas[data-eff]` (in `#thermStage`) + `.effpanel
-  [data-eff]` (in `#thermPanel`) via the `hidden` attribute.
-- **Each effect is its own IIFE with its own WebGL context** (`flow1Canvas`, `flow2Canvas` →
-  separate `getContext('webgl')`). Its render loop is gated:
-  `if(body.classList.contains('mode-thermal') && THERM.eff==='flowN'){ …render… }`. Each keeps
-  its own state object, gradient editor, LUT texture and `requestAnimationFrame` loop. Nothing
-  is shared between effects except the `THERM` flag and the mode class → total isolation.
-- **Add Flow 3**: a `<button class="theff" data-eff="flow3">` in `#thermEffects`, a
-  `<canvas class="effcanvas" data-eff="flow3" hidden>` in `#thermStage`, a `<div class="effpanel"
-  data-eff="flow3" hidden>` in `#thermPanel`, and a new IIFE gated on `THERM.eff==='flow3'`.
-
-### Shared "thermal color" machinery (both flows use it)
-The Thermal effects standardise on a **circular Colorama** that Pattern does *not* use:
-- **`sampleStops` is circular** — last stop blends back into the first (a looped palette), so the
-  gradient editor's wrap segment is a real blend, not a seam.
-- LUT texture wrap = **`REPEAT`**, sampled with **plain `fract`** (no `min(lum,0.998)` cap — that
-  cap is a Pattern-only seam workaround; unnecessary here because the palette itself loops).
-- **Phase = drift + manual offset**: `u_phase` advances over time (a `speed`/Drift control),
-  `u_offset` is a static manual Phase. `t = value*cycles + u_phase*w + u_offset`.
-- Each effect has its own gradient editor (draggable stops on a `#*_gbar` canvas + `#*_gstops`,
-  dbl-click to add, − stop), duplicated per module (prefixed `th_`/`f2_`).
-
-### Flow 1 — "Column radiate"
-- Scene: an analytic **SDF field** of stacked discs + capsules + a base flare (`disc`/`capsule`
-  smooth-min bulges) forming a glowing column, all in the fragment shader.
-- Colour: the circular Colorama above. **Core lock** (`u_lock`) is the notable extra — the
-  either/or from the AE reference: `lock<0.005` → one-way drift (`raw`); `lock>0` → the drift
-  weight fades out above the threshold (`1 - smoothstep(lock±.08, f)`) **and** drift switches to
-  time **ping-pong** (`|…*2-1|`), because a pinned core with one-way drift accumulates a seam.
-- Controls: gradient · Band cycles · Drift · Phase · Core lock · Blur (SDF softness) · Bar glow ·
-  Base flare · Export PNG · Reset. Adapted from `~/Desktop/column-radiate.html` (math only).
-
-### Flow 2 — shape → variable blur → Colorama
-The AE pipeline `A2 → Blur Comp (4-Color Gradient) → Adj.1 (Compound + Lens Blur) → Adj.2
-(Colorama + Phase Shift)`, ported as:
-1. **Source**: typed text (default "A") drawn white-on-black to a **1024² POT canvas** →
-   `srcTex` with **mipmaps** (`generateMipmap`, `LINEAR_MIPMAP_LINEAR`). Square+POT so mip-blur
-   works; the display samples it letterboxed (`uv = (p.x/asp, (p.y-0.5)/asp+0.5)`) to keep the
-   letter's proportions.
-2. **Blur map** (= AE's 4-Color Gradient): 4 pins, each a **grayscale value** (default 2 white =
-   blur / 2 black = sharp), smoothly blended by inverse-distance weighting (`bmap`, `u_blend` =
-   IDW power). **Show blur map** (`f2_showMap`) renders the grayscale field + pin rings; drag the
-   pins on the canvas (only when the map is shown). Pin value buttons in the panel.
-3. **Variable blur**: per-pixel radius = `blurMap * blurMax`; the shader picks a **mip LOD**
-   (`log2(radiusInTexels)`) and does **one trilinear fetch** = smooth, cheap mip-blur.
-4. **Colour**: the blurred luminance → the circular Colorama + phase drift.
-- Baked defaults (the user's tuned look): `blurMax 1.0, blend 3.4, cycles 1, speed 0.576,
-  phase 0`, pins 2-white/2-black, a fire ramp (dark→orange→cream peak→orange→dark loop).
-  The ramp hexes were **estimated from a screenshot** — verify/adjust against the intended look.
-- **Known limitation / next step**: the mip-LOD blur is box-flavoured and can look slightly
-  chunky / show faint edge aliasing at low blur on hard glyph edges. The user flagged this.
-  The proper fix (proposed, **not built**): a **Gaussian blur pyramid** — pre-blur the source
-  into N FBO levels with a separable Gaussian, then interpolate between levels by the blur
-  amount in the final shader. That replaces the single mip fetch with a true, smooth,
-  alias-free variable blur.
-
-### Reference files
-- `~/Desktop/column-radiate.html` — the standalone AE-derived effect Flow 1 was adapted from
-  (kept for the math; scene/UI were re-done in our style).

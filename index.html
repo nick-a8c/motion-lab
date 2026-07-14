@@ -69,6 +69,16 @@
   .btn { background:#1c1c24; color:var(--txt); border:1px solid var(--line); border-radius:5px;
     padding:6px 10px; cursor:pointer; font-size:12px; }
   .btn:hover { border-color:var(--accent); }
+  .svgthumb { width:34px; height:34px; flex:none; display:grid; place-items:center; padding:4px;
+    background:#1c1c24; border:1px solid var(--line); border-radius:5px; cursor:pointer; }
+  .svgthumb:hover { border-color:var(--accent); }
+  .svgthumb.on { border-color:var(--accent); background:#23233a; }
+  .svgthumb svg { width:100%; height:100%; display:block; }
+  /* which post-FX the randomiser is allowed to reach for */
+  #rndFxList { display:grid; grid-template-columns:1fr 1fr; gap:2px 8px; margin:1px 0 4px 21px; }
+  #rndFxList label { display:flex; align-items:center; gap:5px; color:var(--dim); font-size:11px; cursor:pointer; }
+  #rndFxList input { accent-color:var(--accent); }
+  #rndFxList.off { opacity:0.35; pointer-events:none; }
   .chip { padding:4px 9px; font-size:11px; border-radius:12px; }
   .pchip { display:inline-flex; align-items:center; gap:6px; background:#1c1c24; border:1px solid var(--line);
     border-radius:12px; font-size:11px; overflow:hidden; }
@@ -85,40 +95,39 @@
   #leftrail { width:234px; flex:none; border-right:1px solid #20201d; display:flex; flex-direction:column; padding:14px 0 0; }
   #rightrail { width:302px; flex:none; border-left:1px solid #20201d; display:flex; flex-direction:column; }
   #center { flex:1; min-width:0; display:flex; flex-direction:column; background:#060605; }
-  /* two-page mode switch */
-  #modebar { position:fixed; top:8px; left:50%; transform:translateX(-50%); z-index:1000;
+  /* canvas aspect-ratio picker */
+  #arbar { position:fixed; top:8px; left:50%; transform:translateX(-50%); z-index:1000;
     display:flex; gap:2px; background:#141413; border:1px solid #2a2a26; border-radius:7px; padding:2px; }
-  #modebar button { font:inherit; font-size:11px; letter-spacing:.09em; text-transform:uppercase;
-    padding:4px 13px; border:none; background:transparent; color:#8a8a82; border-radius:5px; cursor:pointer; }
-  #modebar button:hover { color:#d8d8d1; }
-  #modebar button.on { background:#26261f; color:#d8d8d1; }
-  #thermal { display:none; }
-  body.mode-thermal #app { display:none; }
-  body.mode-thermal #thermal { display:flex; height:100vh; width:100vw; background:#060605; }
-  #thermLeft { width:190px; flex:none; border-right:1px solid #20201d; padding:14px 0 0; display:flex; flex-direction:column; }
-  #thermLeft .brand { padding:0 14px; }
-  #thermLeft .tseg { padding:0 14px; margin:16px 0 6px; font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:#56564f; }
-  #thermEffects { display:flex; flex-direction:column; }
-  .theff { text-align:left; font:inherit; font-size:12px; padding:8px 14px; background:transparent; border:none; border-left:2px solid transparent; color:#a6a69e; cursor:pointer; }
-  .theff:hover { background:#141413; color:#d8d8d1; }
-  .theff.on { border-left-color:#6b6bff; color:#cfe0ff; background:#141413; }
-  #thermStage { flex:1; min-width:0; display:flex; align-items:center; justify-content:center; }
-  .effcanvas { height:min(100%,133vw); max-width:100%; aspect-ratio:3/4; background:#000; border:1px solid #20201d; }
-  #thermPanel { width:302px; flex:none; border-left:1px solid #20201d; overflow-y:auto; padding:14px 14px 40px; }
-  #thermPanel .brand { font-size:13px; font-weight:600; color:#d8d8d1; letter-spacing:.06em; }
-  .tsec { border-top:1px solid #20201d; padding-top:10px; margin-top:12px; }
-  .tsec-h { display:flex; align-items:center; font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:#56564f; margin-bottom:8px; }
-  .th-sm { margin-left:auto; font:inherit; font-size:11px; padding:2px 8px; background:#141413; border:1px solid #2a2a26; color:#a6a69e; border-radius:5px; cursor:pointer; }
-  .th-sm:hover { border-color:#5a5a50; color:#d8d8d1; }
-  .th-sm.on { border-color:#6b6bff; color:#cfe0ff; }
-  #th_gbar, #f2_gbar { display:block; width:100%; height:26px; border:1px solid #2a2a26; border-radius:5px 5px 0 0; cursor:copy; }
-  #th_gstops, #f2_gstops { position:relative; height:18px; border:1px solid #2a2a26; border-top:none; border-radius:0 0 5px 5px; background:#0a0a09; }
-  .th-stop { position:absolute; top:2px; width:12px; height:12px; margin-left:-6px; border-radius:50%; border:2px solid #0a0a09; cursor:grab; box-shadow:0 0 0 1px #2a2a26; }
-  .th-stop.sel { box-shadow:0 0 0 2px #6b6bff; }
-  .th-grow { display:flex; gap:6px; align-items:center; margin-top:8px; }
-  .th-grow input[type=color] { width:34px; height:26px; border:1px solid #2a2a26; border-radius:5px; background:none; padding:1px; cursor:pointer; }
-  .th-grow .pos { font-family:ui-monospace,monospace; color:#56564f; width:46px; font-size:11px; }
+  #arbar button { font:inherit; font-size:10px; letter-spacing:.06em;
+    padding:3px 9px; border:none; background:transparent; color:#8a8a82; border-radius:5px; cursor:pointer; }
+  #arbar button:hover { color:#d8d8d1; }
+  #arbar button.on { background:#26261f; color:#d8d8d1; }
   .brand { color:#d8d8d1; font-size:13px; padding:0 16px 14px; letter-spacing:.5px; }
+  /* --- three tiers (Browse / Simple / Advanced) --- */
+  .modesw { display:flex; gap:2px; background:#141413; border:1px solid #2a2a26; border-radius:6px; padding:2px; }
+  .modesw button { font:inherit; font-size:10px; letter-spacing:.06em; text-transform:uppercase;
+    padding:3px 8px; border:none; background:transparent; color:#8a8a82; border-radius:4px; cursor:pointer; }
+  .modesw button:hover { color:#d8d8d1; }
+  .modesw button.on { background:#26261f; color:#d8d8d1; }
+  #simplePanel { display:none; }
+  /* the left rail carries a lot of expert tooling — Simple/Browse only need Looks + Surprise + Save */
+  body.mode-simple .adv-only, body.mode-browse .adv-only { display:none !important; }
+  body.mode-browse #presetName, body.mode-browse #saveBtn { display:none; }
+  body.mode-simple #panels { display:none; }
+  body.mode-simple #simplePanel { display:block; }
+  body.mode-browse #rightrail { display:none; }
+  .macro .mrow { display:grid; grid-template-columns:78px 1fr 42px; align-items:center; gap:8px; margin:10px 0 0; }
+  .macro label { color:var(--txt); font-size:12px; display:flex; align-items:center; gap:5px; }
+  /* the "this no longer represents the state" dot — set when an Advanced edit drifts a macro */
+  .macro .dot { width:6px; height:6px; border-radius:50%; background:var(--accent); opacity:0; flex:none; }
+  .macro.custom .dot { opacity:1; }
+  .macro.custom label { color:var(--dim); }
+  .macro input[type=range] { width:100%; accent-color:var(--accent); }
+  .macro .val { font-variant-numeric:tabular-nums; text-align:right; color:var(--dim); font-size:11px; }
+  .macro .why { color:#56564f; font-size:10px; margin:1px 0 0 86px; height:12px; opacity:0; transition:opacity .12s; }
+  .macro:hover .why { opacity:1; }
+  /* hovering a macro shows which Advanced controls it drives — the graduation path */
+  .row.drives, .sub.drives { outline:1px solid var(--accent); outline-offset:3px; border-radius:5px; }
   .rail-scroll { flex:1; overflow-y:auto; padding:2px 16px 24px; }
   .rail-scroll::-webkit-scrollbar { width:8px; } .rail-scroll::-webkit-scrollbar-thumb { background:#26261f; border-radius:4px; }
   .rail-foot { display:flex; gap:14px; color:#56564f; padding:13px 16px; border-top:1px solid #20201d; }
@@ -130,7 +139,9 @@
   .ctop .side { width:64px; color:#56564f; font-size:13px; display:flex; gap:13px; }
   .ctop .cttl { display:flex; align-items:center; gap:8px; color:#a6a69e; }
   .ctop .cttl .d { color:#cfcfc7; font-size:8px; } .ctop .cttl .rn { color:#56564f; }
-  #stage { position:relative; inset:auto; flex:1; min-height:0; padding:0; background:transparent; overflow:hidden; }
+  #stage { position:relative; inset:auto; flex:1; min-height:0; padding:0; background:transparent; overflow:hidden;
+    display:flex; align-items:center; justify-content:center; }
+  #stageInner { position:relative; background:#000; }   /* px size set by applyAspect() */
   #glcanvas { display:block; width:100%; height:100%; }
   #gradedit #gline { position:absolute; width:1px; background:rgba(255,255,255,.8); transform:translateX(-50%); }
   #gradedit .ghandle { position:absolute; width:14px; height:14px; box-sizing:border-box; border:1.5px solid #fff; background:rgba(0,0,0,.25); transform:translate(-50%,-50%); cursor:ns-resize; pointer-events:auto; }
@@ -153,6 +164,9 @@
   .palhead.collapsed:before { transform:rotate(-90deg); }
   .btn { background:#141413; color:#a6a69e; border-color:#2a2a26; }
   .btn:hover { border-color:#5a5a50; color:#d8d8d1; }
+  .svgthumb { background:#141413; border-color:#2a2a26; }
+  .svgthumb:hover { border-color:#5a5a50; }
+  .svgthumb.on { border-color:#6b6bff; background:#1a1a26; }
   select,#presetName,#srcText { background:#0a0a09 !important; border-color:#2a2a26 !important; color:#a6a69e !important; }
   /* muted grey controls — thin line + dot slider (matches Grainrad) */
   input[type=range] { -webkit-appearance:none; appearance:none; background:transparent; height:14px; cursor:pointer; }
@@ -169,38 +183,43 @@
 </style>
 </head>
 <body>
-<div id="modebar">
-  <button id="modePattern" class="on">Pattern</button>
-  <button id="modeThermal">Thermal</button>
-</div>
+<div id="arbar" title="Canvas aspect ratio"></div>
 <div id="app">
 <aside id="leftrail">
   <div class="brand">Motion Lab</div>
+  <div style="padding:0 16px 12px">
+    <div class="modesw" id="modesw">
+      <button data-mode="browse">Browse</button>
+      <button data-mode="simple" class="on">Simple</button>
+      <button data-mode="advanced">Advanced</button>
+    </div>
+  </div>
   <div class="rail-scroll">
     <div class="seg" style="margin-top:0">Input</div>
     <div style="color:#56564f;margin-bottom:10px">Standby</div>
     <div id="leftpresets">
 
-  <div class="panel" data-tab="presets"><div class="phead"><span class="ptitle">Presets</span>
+  <div class="panel" data-tab="presets"><div class="phead"><span class="ptitle">Looks</span>
     <span class="pbtns"><span class="pbtn pin" title="Pin (keep open)">📌</span><span class="pbtn dock" title="Return to default position">⤢</span><span class="pbtn cls" title="Close">✕</span></span></div>
     <div class="pbody">
-      <div style="display:flex;gap:6px;margin-bottom:12px">
+      <div class="adv-only" style="display:flex;gap:6px;margin-bottom:12px">
         <button class="btn" id="newBtn" style="flex:1">＋ New</button>
         <button class="btn" id="srcViewBtn" style="flex:1" title="Toggle all effects off to see the strip">◐ Source</button>
       </div>
-      <div class="seg">Showcase</div>
       <div id="showcase" style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px"></div>
-      <div class="seg">Style to build from</div>
-      <div id="styles" style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:12px"></div>
+      <div class="seg adv-only">Style to build from</div>
+      <div id="styles" class="adv-only" style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:12px"></div>
       <button class="btn" id="rndBtn" style="width:100%">🎲 Surprise me</button>
-      <label style="display:flex;align-items:center;gap:7px;margin:8px 0 2px;color:var(--dim);font-size:12px;cursor:pointer"><input type="checkbox" id="rndFx" checked style="accent-color:var(--accent)"> Include Post FX in random</label>
-      <label style="display:flex;align-items:center;gap:7px;margin:2px 0;color:var(--dim);font-size:12px;cursor:pointer"><input type="checkbox" id="fxBypass" style="accent-color:var(--accent)"> Preview without Post FX</label>
+      <label class="adv-only" style="display:flex;align-items:center;gap:7px;margin:8px 0 2px;color:var(--dim);font-size:12px;cursor:pointer"><input type="checkbox" id="rndSvg" checked style="accent-color:var(--accent)"> Use the SVG shape as the base</label>
+      <label class="adv-only" style="display:flex;align-items:center;gap:7px;margin:2px 0;color:var(--dim);font-size:12px;cursor:pointer"><input type="checkbox" id="rndFx" checked style="accent-color:var(--accent)"> Include Post FX in random</label>
+      <div id="rndFxList" class="adv-only"></div>
+      <label class="adv-only" style="display:flex;align-items:center;gap:7px;margin:2px 0;color:var(--dim);font-size:12px;cursor:pointer"><input type="checkbox" id="fxBypass" style="accent-color:var(--accent)"> Preview without Post FX</label>
       <div style="display:flex;gap:6px;margin-top:8px">
         <input id="presetName" placeholder="name this look…" />
         <button class="btn" id="saveBtn">Save</button>
       </div>
       <div id="presetList" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px"></div>
-      <button class="btn" id="copyBtn" style="width:100%;margin-top:10px">Copy settings</button>
+      <button class="btn adv-only" id="copyBtn" style="width:100%;margin-top:10px">Copy settings</button>
     </div></div>
     </div>
   </div>
@@ -208,12 +227,17 @@
 </aside>
 
 <main id="center">
-  <div id="stage"><canvas id="glcanvas" width="1200" height="1200"></canvas>
-    <canvas id="fieldOverlay" style="position:absolute;inset:0;pointer-events:none;display:none"></canvas>
-    <div id="gradedit" style="position:absolute;inset:0;pointer-events:none;display:none">
-      <div id="gline"></div>
-      <div class="ghandle" id="ghTop"></div>
-      <div class="ghandle" id="ghBot"></div>
+  <div id="stage">
+    <!-- stageInner carries the chosen aspect ratio; the overlays are inset:0 against it,
+         so handles stay aligned with the canvas once it letterboxes -->
+    <div id="stageInner">
+      <canvas id="glcanvas" width="1200" height="1200"></canvas>
+      <canvas id="fieldOverlay" style="position:absolute;inset:0;pointer-events:none;display:none"></canvas>
+      <div id="gradedit" style="position:absolute;inset:0;pointer-events:none;display:none">
+        <div id="gline"></div>
+        <div class="ghandle" id="ghTop"></div>
+        <div class="ghandle" id="ghBot"></div>
+      </div>
     </div>
   </div>
   <div class="cbar">
@@ -226,7 +250,9 @@
 
 <aside id="rightrail">
   <div class="rail-head"><span>Settings</span><span class="rail-reset" id="railReset">Reset</span></div>
-  <div class="rail-scroll"><div id="panels">
+  <div class="rail-scroll">
+  <div id="simplePanel"></div>
+  <div id="panels">
 
   <div class="panel" data-tab="waves"><div class="phead"><span class="ptitle">Waves</span>
     <span class="pbtns"><span class="pbtn pin" title="Pin">📌</span><span class="pbtn dock" title="Return to default position">⤢</span><span class="pbtn cls" title="Close">✕</span></span></div>
@@ -254,12 +280,24 @@
     <span class="pbtns"><span class="pbtn pin" title="Pin">📌</span><span class="pbtn dock" title="Return to default position">⤢</span><span class="pbtn cls" title="Close">✕</span></span></div>
     <div class="pbody">
       <div id="sbody"></div>
-      <div class="sub">Text <span class="toggle"><input type="checkbox" id="srcUse">use</span></div>
+      <div class="sub">Shape <span class="toggle"><input type="checkbox" id="srcUse">use</span></div>
+      <p class="hint">Warps a shape instead of the gradient strip. Pick one below, then switch <b>use</b> on.</p>
+
+      <div class="sub">SVG</div>
+      <div style="display:flex;gap:6px;align-items:center;margin-bottom:8px">
+        <button class="svgthumb" id="svgDefault" title="Default logo"></button>
+        <button class="btn" id="svgLoadBtn" style="flex:1">Load SVG…</button>
+        <input type="file" id="svgFile" accept=".svg,image/svg+xml" style="display:none" />
+      </div>
+      <div class="row"><label>Scale</label><input type="range" id="svg_scale" min="0.15" max="1" step="0.01" value="0.7"><span class="val" id="svg_scaleV">0.70</span></div>
+      <div class="row"><label>Invert</label><span></span><span class="toggle" style="margin:0"><input type="checkbox" id="svg_invert"></span></div>
+      <p class="hint">Any single- or multi-colour SVG works — it's flattened to a white-on-black mask.</p>
+
+      <div class="sub">Text</div>
       <div style="display:flex;gap:6px;margin-bottom:8px">
         <input id="srcText" placeholder="type text…" style="flex:1;background:#0e0e12;color:var(--txt);border:1px solid var(--line);border-radius:5px;padding:5px 7px;font-size:12px" />
         <button class="btn" id="srcTextBtn">Set</button>
       </div>
-      <p class="hint">Warps typed text instead of the gradient strip.</p>
       <div class="sub">Pixel sort (source bake) <span class="toggle"><input type="checkbox" id="psort_on">on</span></div>
       <div class="row"><label>Thresh low</label><input type="range" id="psort_low" min="0" max="1" step="0.01" value="0.16"><span class="val" id="psort_lowV">0.16</span></div>
       <div class="row"><label>Thresh high</label><input type="range" id="psort_high" min="0" max="1" step="0.01" value="0.86"><span class="val" id="psort_highV">0.86</span></div>
@@ -375,89 +413,20 @@
 </aside>
 </div>
 
-<div id="thermal">
-  <aside id="thermLeft">
-    <div class="brand">Thermal</div>
-    <div class="tseg">Effects</div>
-    <div id="thermEffects">
-      <button class="theff on" data-eff="flow1">Flow 1</button>
-      <button class="theff" data-eff="flow2">Flow 2</button>
-    </div>
-  </aside>
-  <div id="thermStage">
-    <canvas id="flow1Canvas" class="effcanvas" data-eff="flow1"></canvas>
-    <canvas id="flow2Canvas" class="effcanvas" data-eff="flow2" hidden></canvas>
-  </div>
-  <aside id="thermPanel">
-    <div class="effpanel" data-eff="flow1">
-    <div class="brand">Flow 1</div>
-    <div class="tsec">
-      <div class="tsec-h">Gradient <button class="th-sm" id="th_delStop">− stop</button></div>
-      <canvas id="th_gbar" width="272" height="26"></canvas>
-      <div id="th_gstops"></div>
-      <div class="th-grow"><input type="color" id="th_stopCol" value="#e8a04c"><span class="pos" id="th_stopPos">–</span><span class="hint" style="margin:0">loops · dbl-click to add</span></div>
-      <div class="row"><label>Band cycles</label><input type="range" id="th_cycles" min="1" max="5" step="1" value="1"><span class="val" id="th_cyclesV">1</span></div>
-    </div>
-    <div class="tsec">
-      <div class="tsec-h">Motion <button class="th-sm" id="th_play">Pause</button></div>
-      <div class="row"><label>Drift</label><input type="range" id="th_speed" min="-0.6" max="0.6" step="0.002" value="0.09"><span class="val" id="th_speedV">0.090</span></div>
-      <div class="row"><label>Phase</label><input type="range" id="th_phase" min="0" max="1" step="0.005" value="0"><span class="val" id="th_phaseV">0.000</span></div>
-      <div class="row"><label>Core lock</label><input type="range" id="th_lock" min="0" max="1" step="0.01" value="0"><span class="val" id="th_lockV">0.00</span></div>
-      <p class="hint">Lock 0 = whole image loops seamlessly. Lock &gt; 0 = core pinned, drift becomes back-and-forth.</p>
-    </div>
-    <div class="tsec">
-      <div class="tsec-h">Look</div>
-      <div class="row"><label>Blur</label><input type="range" id="th_soft" min="0.4" max="3" step="0.02" value="1"><span class="val" id="th_softV">1.00</span></div>
-      <div class="row"><label>Bar glow</label><input type="range" id="th_bars" min="0" max="1" step="0.01" value="0.5"><span class="val" id="th_barsV">0.50</span></div>
-      <div class="row"><label>Base flare</label><input type="range" id="th_base" min="0" max="1" step="0.01" value="0.45"><span class="val" id="th_baseV">0.45</span></div>
-    </div>
-    <div class="tsec">
-      <div class="tsec-h">Output</div>
-      <div style="display:flex;gap:6px;margin-top:4px"><button class="btn" id="th_export">Export PNG</button><button class="btn" id="th_reset">Reset</button></div>
-    </div>
-    </div><!-- /flow1 effpanel -->
-    <div class="effpanel" data-eff="flow2" hidden>
-      <div class="brand">Flow 2</div>
-      <div class="tsec">
-        <div class="tsec-h">Source</div>
-        <div style="display:flex;gap:6px"><input id="f2_text" value="A" style="flex:1;background:#0e0e12;color:#d8d8d1;border:1px solid #2a2a26;border-radius:5px;padding:5px 7px;font-size:12px"><button class="th-sm" id="f2_setText" style="margin-left:0">Set</button></div>
-        <p class="hint">White text on black — the shape to blur &amp; colour.</p>
-      </div>
-      <div class="tsec">
-        <div class="tsec-h">Blur map <button class="th-sm" id="f2_showMap">Show</button></div>
-        <div class="row"><label>Blur amount</label><input type="range" id="f2_blurMax" min="0" max="1" step="0.02" value="0.7"><span class="val" id="f2_blurMaxV">0.70</span></div>
-        <div class="row"><label>Blend</label><input type="range" id="f2_blend" min="1" max="6" step="0.1" value="2.5"><span class="val" id="f2_blendV">2.5</span></div>
-        <div class="row"><label>Pins</label><span></span><span></span></div>
-        <div id="f2_pins" style="display:flex;gap:5px;margin-top:2px"></div>
-        <p class="hint">Show the map, then drag the 4 pins on the canvas. White = blur, black = sharp.</p>
-      </div>
-      <div class="tsec">
-        <div class="tsec-h">Colorama <span style="margin-left:auto;display:flex;gap:5px"><button class="th-sm" id="f2_delStop" style="margin-left:0">− stop</button><button class="th-sm" id="f2_play" style="margin-left:0">Pause</button></span></div>
-        <canvas id="f2_gbar" width="272" height="26"></canvas>
-        <div id="f2_gstops"></div>
-        <div class="th-grow"><input type="color" id="f2_stopCol" value="#ff8a00"><span class="pos" id="f2_stopPos">–</span><span class="hint" style="margin:0">loops · dbl-click to add</span></div>
-        <div class="row"><label>Cycles</label><input type="range" id="f2_cycles" min="1" max="5" step="1" value="1"><span class="val" id="f2_cyclesV">1</span></div>
-        <div class="row"><label>Drift</label><input type="range" id="f2_speed" min="-0.6" max="0.6" step="0.002" value="0.06"><span class="val" id="f2_speedV">0.060</span></div>
-        <div class="row"><label>Phase</label><input type="range" id="f2_phase" min="0" max="1" step="0.005" value="0"><span class="val" id="f2_phaseV">0.000</span></div>
-      </div>
-      <div class="tsec">
-        <div class="tsec-h">Output</div>
-        <div style="display:flex;gap:6px;margin-top:4px"><button class="btn" id="f2_export">Export PNG</button><button class="btn" id="f2_reset">Reset</button></div>
-      </div>
-    </div><!-- /flow2 effpanel -->
-  </aside>
-</div>
 
 <script>
+// Default = the user's saved "Look 3": sine + semicircle waves, radial warp, mirrored
+// with a horizontal fold, on the gradient strip, through a teal→violet ramp.
 const PRESET = () => ({
-  w1on:true, w1h:206, w1w:446, w1d:180, w1s:0.95, w1t:0,
-  w2on:true, w2h:119, w2w:100, w2d:180, w2s:0.7, w2t:0,
-  mon:true, mhon:false, ma:0, mcx:600, mcy:600,
+  w1on:true, w1h:118, w1w:712, w1d:0,   w1s:0.85, w1t:1,   // w1t 1 = Sine
+  w2on:true, w2h:72,  w2w:54,  w2d:270, w2s:0.59, w2t:0,   // w2t 0 = Semicircle
+  mon:true, mhon:true, ma:270, mcx:600, mcy:600,
   kon:false, kseg:6, krot:0,
-  radial:false, cross:false, srcMode:0,
+  radial:true, cross:false, srcMode:0,   // 0 = the gradient strip (1 = warp the SVG shape)
+  srcKind:'svg', svg_scale:0.7, svg_invert:false,
   seamless:false, loopLen:4,
-  blur:153, stripW:379, gradHalf:775, gradCenter:0.5,
-  con:true, mirror:false, cycles:1, cps:0, gspeed:0.39,
+  blur:83, stripW:356, gradHalf:523, gradCenter:0.5,
+  con:true, mirror:true, cycles:0.25, cps:0.07, gspeed:0.5,
   grain_on:false, grain:0.10, pix_on:false, pix:12,
   post_on:false, post_lv:16,
   psort_on:false, psort_low:0.16, psort_high:0.86, psort_down:true,
@@ -471,13 +440,14 @@ const PRESET = () => ({
   fm_type:0, fm_rot:0, fm_soft:0.6, fm_size:1.0, fm_invert:false, fm_show:false,
 });
 let P = PRESET();
+// "Look 3" ramp: deep teal → green → aqua → blue → violet
 const DEFAULT_STOPS = [
-  {pos:0.00, color:'#020210'},
-  {pos:0.30, color:'#1e1ec8'},
-  {pos:0.55, color:'#2828ff'},
-  {pos:0.78, color:'#7d7dff'},
-  {pos:0.92, color:'#dcdcff'},
-  {pos:1.00, color:'#ffffff'},
+  {pos:0.25, color:'#013A2E'},
+  {pos:0.45, color:'#10B86A'},
+  {pos:0.62, color:'#28FFB0'},
+  {pos:0.78, color:'#34D6FF'},
+  {pos:0.90, color:'#6F6BFF'},
+  {pos:1.00, color:'#C86BFF'},
 ];
 let stops = DEFAULT_STOPS.map(s=>({...s}));
 const PALETTES = {
@@ -599,7 +569,14 @@ float waveFn(int t, float c){
 // soft (pre-blurred) gradient strip, luminance 0..1
 float sourceLum(vec2 p){
   if(u_srcMode == 1){               // image / text source (blur is pre-applied to the texture)
-    vec2 uv = vec2(p.x/u_res.x, p.y/u_res.y);
+    // The source canvas is SQUARE (1024²) with the shape drawn aspect-fit inside it.
+    // Sampling it as p/u_res would stretch that square onto the canvas, so the shape
+    // would squash the moment the aspect isn't 1:1. Map it to a centred square scaled
+    // to the SHORT side instead — contain-fit: the shape only scales, never distorts.
+    // Outside that square there is no source (returning 0 = background, not a smeared
+    // CLAMP_TO_EDGE border).
+    vec2 uv = (p - u_res*0.5) / min(u_res.x, u_res.y) + 0.5;
+    if(uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0) return 0.0;
     vec3 c = texture2D(u_srcTex, uv).rgb;
     return dot(c, vec3(0.299,0.587,0.114));
   }
@@ -874,7 +851,7 @@ let fboA=makeFBO(RW,RH);
 // keep the render resolution matched to the visible canvas area so the effect fills
 // the whole center (between the rails) instead of being letterboxed into a square.
 function resizeCanvas(){
-  const st=document.getElementById('stage'); if(!st) return;
+  const st=document.getElementById('stageInner'); if(!st) return;   // the letterboxed box, not the full stage
   const w=Math.max(64, st.clientWidth), h=Math.max(64, st.clientHeight);
   const cap=1600, sc=Math.min(1, cap/Math.max(w,h));
   const nw=Math.round(w*sc), nh=Math.round(h*sc);
@@ -989,16 +966,112 @@ function resortSource(){                             // re-bake from the kept ra
   gl.bindTexture(gl.TEXTURE_2D, srcTex);
   gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, srcCanvas);
 }
+let srcTextVal='WARP';
 function srcFromText(txt){
   const c=srcCtx, W=srcCanvas.width, H=srcCanvas.height;
+  srcTextVal=txt; P.srcKind='text';
+  c.globalCompositeOperation='source-over';
   c.fillStyle='#000'; c.fillRect(0,0,W,H);
   c.fillStyle='#fff'; c.textAlign='center'; c.textBaseline='middle';
   let size=420; c.font=`900 ${size}px -apple-system,Arial,sans-serif`;
   while(c.measureText(txt).width > W*0.9 && size>20){ size-=10; c.font=`900 ${size}px -apple-system,Arial,sans-serif`; }
   c.fillText(txt, W/2, H/2);
+  uploadSrcTexture(); syncSrcKind();
+}
+
+// ---------- SVG shape source ----------
+const DEFAULT_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 304 278"><path d="M151.309 0C243.097 0 303.146 64.7319 303.146 134.477V142.979C303.146 211.562 243.607 277.456 151.309 277.456C59.5265 277.454 0 211.56 0 142.979V134.477C0 64.7331 59.5265 0.00218497 151.309 0ZM151.309 40.7615C85.063 40.7636 49.1602 85.2951 49.1602 135.206V141.454C49.1619 191.436 85.6474 236.777 151.309 236.779C216.975 236.779 254.052 191.438 254.053 141.454V135.206C254.053 85.2212 217.559 40.7615 151.309 40.7615ZM169.142 87.0945C174.053 86.032 179.188 86.949 183.418 89.6517V90.1596C185.499 91.5123 187.299 93.2641 188.702 95.3079C190.101 97.3482 191.072 99.6467 191.58 102.065C192.088 104.487 192.129 106.999 191.666 109.431C191.203 111.861 190.25 114.171 188.887 116.239L144.671 184.315C143.337 186.4 141.607 188.2 139.575 189.617C137.54 191.033 135.241 192.046 132.817 192.58C130.392 193.113 127.878 193.165 125.435 192.733C122.989 192.299 120.65 191.389 118.559 190.057C114.354 187.31 111.401 183.019 110.362 178.118C109.325 173.221 110.277 168.114 113.005 163.91L157.22 95.3248C159.941 91.1187 164.231 88.1574 169.142 87.0945Z" fill="currentColor"/></svg>';
+const svgTmp = document.createElement('canvas'); svgTmp.width=srcCanvas.width; svgTmp.height=srcCanvas.height;
+const svgTmpCtx = svgTmp.getContext('2d');
+let svgMarkup = DEFAULT_SVG;   // kept outside P: it's an asset, so Reset doesn't discard a file you loaded
+let svgImg = null;
+
+function prepSVG(markup){
+  // Give the root an explicit pixel size — a size-less <svg> won't rasterise into an Image in every browser.
+  const el = new DOMParser().parseFromString(markup, 'image/svg+xml').documentElement;
+  if(!el || el.nodeName.toLowerCase()!=='svg' || el.getElementsByTagName('parsererror').length) return null;
+  const vb = (el.getAttribute('viewBox')||'').trim().split(/[\s,]+/).map(Number);
+  let vw=parseFloat(el.getAttribute('width')), vh=parseFloat(el.getAttribute('height'));
+  if(vb.length===4 && vb[2]>0 && vb[3]>0){ vw=vb[2]; vh=vb[3]; }
+  if(!(vw>0 && vh>0)) vw=vh=100;
+  if(!el.getAttribute('viewBox')) el.setAttribute('viewBox', `0 0 ${vw} ${vh}`);
+  const k = srcCanvas.width/Math.max(vw,vh);   // rasterise at the source size so the downscale stays crisp
+  el.setAttribute('width',  (vw*k).toFixed(2));
+  el.setAttribute('height', (vh*k).toFixed(2));
+  return new XMLSerializer().serializeToString(el);
+}
+function srcFromSVG(markup){
+  // already rasterised → redraw straight away, no image round-trip
+  if(svgImg && (!markup || markup===svgMarkup)){ P.srcKind='svg'; drawSVGSource(); syncSrcKind(); return true; }
+  const m = prepSVG(markup || svgMarkup);
+  if(!m){ console.warn('Not a valid SVG'); return false; }
+  const img = new Image();
+  img.onload = ()=>{ svgImg=img; if(markup) svgMarkup=markup; P.srcKind='svg'; drawSVGSource(); syncSrcKind(); };
+  img.onerror = ()=> console.warn('SVG failed to rasterise');
+  // data: URI (not blob:) keeps the canvas untainted, so getImageData() still works for the pixel sort
+  img.src = 'data:image/svg+xml;charset=utf-8,'+encodeURIComponent(m);
+  return true;
+}
+function drawSVGSource(){
+  const c=srcCtx, W=srcCanvas.width, H=srcCanvas.height;
+  const bg = P.svg_invert?'#fff':'#000', fg = P.svg_invert?'#000':'#fff';
+  c.globalCompositeOperation='source-over';
+  c.fillStyle=bg; c.fillRect(0,0,W,H);
+  if(svgImg && svgImg.width){
+    const s = Math.min(W/svgImg.width, H/svgImg.height) * P.svg_scale;
+    const w = svgImg.width*s, h = svgImg.height*s;
+    const t = svgTmpCtx;
+    t.globalCompositeOperation='source-over';
+    t.clearRect(0,0,W,H);
+    t.drawImage(svgImg, (W-w)/2, (H-h)/2, w, h);
+    t.globalCompositeOperation='source-atop';   // flatten whatever colours the SVG has into one solid mask
+    t.fillStyle=fg; t.fillRect(0,0,W,H);
+    t.globalCompositeOperation='source-over';
+    c.drawImage(svgTmp, 0, 0);
+  }
   uploadSrcTexture();
 }
-srcFromText('WARP'); // placeholder so texture is never empty
+// Raster sources get their OWN draw. The SVG path flattens whatever it loads into a solid
+// white mask (source-atop) — run a photo through that and you just get a white rectangle.
+// A raster's luminance IS the signal, so draw it aspect-fit on black and leave it alone.
+let rasterImg=null;
+function drawImageSource(){
+  const c=srcCtx, W=srcCanvas.width, H=srcCanvas.height;
+  c.globalCompositeOperation='source-over';
+  c.fillStyle='#000'; c.fillRect(0,0,W,H);
+  if(rasterImg && rasterImg.width){
+    const sc=Math.min(W/rasterImg.width, H/rasterImg.height) * P.svg_scale;
+    const w=rasterImg.width*sc, h=rasterImg.height*sc;
+    c.drawImage(rasterImg,(W-w)/2,(H-h)/2,w,h);
+    if(P.svg_invert){ c.globalCompositeOperation='difference'; c.fillStyle='#fff'; c.fillRect(0,0,W,H); c.globalCompositeOperation='source-over'; }
+  }
+  uploadSrcTexture();
+}
+function srcFromImage(file){
+  const url=URL.createObjectURL(file);
+  const img=new Image();
+  img.onload=()=>{ rasterImg=img; P.srcKind='image'; drawImageSource(); syncSrcKind(); URL.revokeObjectURL(url); };
+  img.onerror=()=>{ URL.revokeObjectURL(url); alert("Couldn't read that image."); };
+  img.src=url;
+}
+// one entry point for both kinds — used by the Simple panel's Load button
+function loadSourceFile(file){
+  if(!file) return;
+  const isSvg = file.type==='image/svg+xml' || /\.svg$/i.test(file.name);
+  if(isSvg) file.text().then(txt=>{ if(!srcFromSVG(txt)) alert("That file doesn't parse as an SVG."); else useSource(); });
+  else { srcFromImage(file); useSource(); }
+}
+function rebuildSource(){
+  if(P.srcKind==='text') srcFromText(srcTextVal);
+  else if(P.srcKind==='image') drawImageSource();
+  else drawSVGSource();
+}
+function syncSrcKind(){
+  const th=document.getElementById('svgDefault');
+  if(th) th.classList.toggle('on', P.srcKind!=='text');
+}
+srcFromSVG(DEFAULT_SVG);   // the default shape source (async: the black fill below keeps the texture valid meanwhile)
+srcCtx.fillStyle='#000'; srcCtx.fillRect(0,0,srcCanvas.width,srcCanvas.height); uploadSrcTexture();
 
 function hexToRgb(h){ return [parseInt(h.slice(1,3),16), parseInt(h.slice(3,5),16), parseInt(h.slice(5,7),16)]; }
 function sampleStops(t){
@@ -1105,7 +1178,6 @@ P.time = 0;
 function loop(now){
   if(last===null) last = now;
   const dt = (now - last)/1000; last = now;
-  if(document.body.classList.contains('mode-thermal')){ requestAnimationFrame(loop); return; }  // Pattern idle while Thermal is shown
   if(playing){
     P.time += dt * P.gspeed;
     const wrap = P.seamless ? Math.max(0.5,P.loopLen) : 40;
@@ -1173,6 +1245,11 @@ function syncAllControls(){
   const su=document.getElementById('srcUse');
   if(su){ su.checked = P.srcMode===1; su.onclick=e=>e.stopPropagation();
     su.onchange=()=>{ P.srcMode = su.checked?1:0; }; }
+  // shape source (svg / text) — rebuild the source canvas from the restored params
+  const svs=document.getElementById('svg_scale'), svsV=document.getElementById('svg_scaleV'), svi=document.getElementById('svg_invert');
+  if(svs){ svs.value=P.svg_scale; if(svsV) svsV.textContent=P.svg_scale.toFixed(2); }
+  if(svi){ svi.checked=P.svg_invert; svi.onclick=e=>e.stopPropagation(); }
+  if(typeof rebuildSource==='function'){ syncSrcKind(); rebuildSource(); }
   const mir=document.getElementById('mirror');
   if(mir){ mir.checked = P.mirror; mir.onclick=e=>e.stopPropagation();
     mir.onchange=()=>{ P.mirror = mir.checked; updateLUT(); }; }
@@ -1247,11 +1324,29 @@ if(newBtn) newBtn.addEventListener('click', ()=>{
 });
 
 
-// ---------- source: image / text ----------
+// ---------- source: svg / text ----------
+function useSource(){ P.srcMode=1; const su=document.getElementById('srcUse'); if(su) su.checked=true; }
 document.getElementById('srcTextBtn').addEventListener('click', ()=>{
   const t=(document.getElementById('srcText').value||'').trim()||'WARP';
-  srcFromText(t); P.srcMode=1; const su=document.getElementById('srcUse'); if(su) su.checked=true;
+  srcFromText(t); useSource();
 });
+const svgThumb=document.getElementById('svgDefault');
+svgThumb.innerHTML=DEFAULT_SVG;                       // live preview of the shape on the button
+svgThumb.addEventListener('click', ()=>{ srcFromSVG(DEFAULT_SVG); useSource(); });
+const svgFile=document.getElementById('svgFile');
+document.getElementById('svgLoadBtn').addEventListener('click', ()=> svgFile.click());
+svgFile.addEventListener('change', ()=>{
+  const f=svgFile.files && svgFile.files[0]; if(!f) return;
+  f.text().then(txt=>{
+    if(!srcFromSVG(txt)){ alert("That file doesn't parse as an SVG."); return; }
+    svgThumb.innerHTML=prepSVG(txt)||DEFAULT_SVG; useSource();
+  });
+  svgFile.value='';                                   // so re-picking the same file fires change again
+});
+{ const sc=document.getElementById('svg_scale'), scV=document.getElementById('svg_scaleV');
+  sc.addEventListener('input', ()=>{ P.svg_scale=parseFloat(sc.value); scV.textContent=P.svg_scale.toFixed(2);
+    if(P.srcKind!=='text') drawSVGSource(); });
+  document.getElementById('svg_invert').addEventListener('change', e=>{ P.svg_invert=e.target.checked; rebuildSource(); }); }
 // pixel-sort source bake controls (re-bake on change)
 ['psort_low','psort_high'].forEach(id=>{ const el=document.getElementById(id), v=document.getElementById(id+'V');
   el.value=P[id]; if(v) v.textContent=P[id].toFixed(2);
@@ -1366,6 +1461,48 @@ document.getElementById('resetBtn').addEventListener('click', ()=>{
 // ---------- randomize ----------
 const rand = (a,b)=> a + (b-a)*Math.random();
 const pick = arr => arr[Math.floor(Math.random()*arr.length)];
+// Post-FX the randomiser is allowed to reach for. `mosaic` effects fight each other
+// (they all re-grid the image), so at most one of them is ever picked. `chance` is
+// the odds an enabled non-mosaic effect actually fires in a given roll.
+// `on` = ticked by default: the six the randomiser used before this list existed.
+const RND_FX = [
+  { key:'pix',   label:'Pixelate',    on:true,  mosaic:true, apply:()=>{ P.pix_on=true;   P.pix=Math.round(rand(6,30)); } },
+  { key:'half',  label:'Halftone',    on:true,  mosaic:true, apply:()=>{ P.half_on=true;  P.half_scale=pick([6,8,10,12]); P.half_ang=Math.round(rand(0,45)); } },
+  { key:'dots',  label:'Dots',        on:true,  mosaic:true, apply:()=>{ P.dots_on=true;  P.dots_space=pick([6,8,10]); } },
+  { key:'grain', label:'Grain',       on:true,  chance:0.35, apply:()=>{ P.grain_on=true; P.grain=+rand(0.05,0.25).toFixed(2); } },
+  { key:'dot',   label:'Dot screen',  on:true,  chance:0.25, apply:()=>{ P.dot_on=true;   P.dot_space=pick([5,6,8,10]); } },
+  { key:'edge',  label:'Edge',        on:true,  chance:0.18, apply:()=>{ P.edge_on=true;  P.edge_amt=+rand(2,7).toFixed(1); } },
+  { key:'post',  label:'Posterize',   on:false, chance:0.25, apply:()=>{ P.post_on=true;  P.post_lv=Math.round(rand(4,24)); } },
+  { key:'grade', label:'Grade',       on:false, chance:0.30, apply:()=>{ P.grade_on=true; P.grade_gain=+rand(0.85,1.10).toFixed(2); P.grade_crush=+rand(0.2,0.7).toFixed(2); P.grade_sat=+rand(0.3,0.9).toFixed(2); P.grade_tint=+rand(0.1,0.7).toFixed(2); } },
+  { key:'ca',    label:'Chromatic',   on:false, chance:0.22, apply:()=>{ P.ca_on=true;    P.ca_dir=+rand(0.001,0.008).toFixed(4); P.ca_radial=+rand(0.010,0.050).toFixed(3); P.ca_fall=+rand(1.5,3.0).toFixed(1); } },
+  { key:'psort', label:'Pixel sort',  on:false, chance:0.18, apply:()=>{ P.psort_on=true; P.psort_low=+rand(0.05,0.35).toFixed(2); P.psort_high=+rand(0.60,0.95).toFixed(2); P.psort_down=Math.random()<0.5; } },
+];
+// Which of them are ticked, and whether the shape is the base — remembered like the
+// master toggle above (localStorage), so a reload doesn't undo your selection.
+const rndFxBoxes = {};
+{ const wrap=document.getElementById('rndFxList');
+  let saved=null;
+  try{ const s=localStorage.getItem('wwl_rndfxlist'); if(s) saved=JSON.parse(s); }catch(_){}
+  RND_FX.forEach(fx=>{
+    const l=document.createElement('label');
+    const c=document.createElement('input'); c.type='checkbox'; c.id='rndfx_'+fx.key;
+    c.checked = Array.isArray(saved) ? saved.includes(fx.key) : fx.on;
+    c.addEventListener('change', ()=>{
+      try{ localStorage.setItem('wwl_rndfxlist',
+        JSON.stringify(RND_FX.filter(f=>rndFxBoxes[f.key].checked).map(f=>f.key))); }catch(_){}
+    });
+    l.append(c, document.createTextNode(fx.label));
+    wrap.appendChild(l); rndFxBoxes[fx.key]=c;
+  });
+  const master=document.getElementById('rndFx');
+  const syncMaster=()=> wrap.classList.toggle('off', !master.checked);
+  master.addEventListener('change', syncMaster); syncMaster();
+
+  const svgCb=document.getElementById('rndSvg');
+  try{ svgCb.checked = localStorage.getItem('wwl_rndsvg')!=='0'; }catch(_){}
+  svgCb.addEventListener('change', ()=>{ try{ localStorage.setItem('wwl_rndsvg', svgCb.checked?'1':'0'); }catch(_){} });
+}
+
 document.getElementById('rndBtn').addEventListener('click', ()=>{
   const t=P.time; P=PRESET(); P.time=t;
   P.w1on=true; P.w1h=Math.round(rand(70,260)); P.w1w=Math.round(rand(150,720)); P.w1s=+rand(0.3,1.6).toFixed(2);
@@ -1378,16 +1515,20 @@ document.getElementById('rndBtn').addEventListener('click', ()=>{
   P.blur=Math.round(rand(50,210)); P.stripW=Math.round(rand(140,460)); P.gradHalf=Math.round(rand(500,950));
   P.gspeed=+rand(0.15,0.6).toFixed(2); P.cycles=pick([1,1,1,2,3]); P.cps=Math.random()<0.3?+rand(0.05,0.4).toFixed(2):0;
   stops = pick(Object.values(PALETTES)).map(s=>({...s}));
-  // post-fx — only when the toggle is on (P reset above already left them off)
+
+  // Base: the SVG shape, or the gradient strip. PRESET() already set srcMode, but
+  // state it explicitly so the toggle reads the same either way.
+  const rndSvg=document.getElementById('rndSvg');
+  P.srcMode = (rndSvg && rndSvg.checked) ? 1 : 0;
+
+  // post-fx — only the ones ticked in the list, and only when the master is on
+  // (P reset above already left every effect off)
   const rndFx=document.getElementById('rndFx');
   if(rndFx && rndFx.checked){
-    const m=Math.random();                                   // one mosaic effect at most
-    if(m<0.16){ P.pix_on=true; P.pix=Math.round(rand(6,30)); }
-    else if(m<0.30){ P.half_on=true; P.half_scale=pick([6,8,10,12]); P.half_ang=Math.round(rand(0,45)); }
-    else if(m<0.42){ P.dots_on=true; P.dots_space=pick([6,8,10]); }
-    if(Math.random()<0.18){ P.edge_on=true; P.edge_amt=+rand(2,7).toFixed(1); }
-    if(Math.random()<0.35){ P.grain_on=true; P.grain=+rand(0.05,0.25).toFixed(2); }
-    if(Math.random()<0.25){ P.dot_on=true; P.dot_space=pick([5,6,8,10]); }
+    const enabled = RND_FX.filter(fx => rndFxBoxes[fx.key] && rndFxBoxes[fx.key].checked);
+    const mosaics = enabled.filter(fx => fx.mosaic);
+    if(mosaics.length && Math.random()<0.42) pick(mosaics).apply();   // at most one
+    enabled.filter(fx => !fx.mosaic).forEach(fx => { if(Math.random()<fx.chance) fx.apply(); });
   }
   syncAllControls();
 });
@@ -1449,10 +1590,10 @@ const SHOWCASE = {
 };
 const showWrap=document.getElementById('showcase'); showWrap.style.display='block';
 const SHOWCASE_GROUPS=[
-  ['Looks', ['Blue','Sonar','Cymatics','Chrome Ripple','Aurora Veil','Mandala','Inferno','Nebula','Copper','Halftone','Retro','Scanlines']],
+  ['', ['Blue','Sonar','Cymatics','Chrome Ripple','Aurora Veil','Mandala','Inferno','Nebula','Copper','Halftone','Retro','Scanlines']],
 ];
 SHOWCASE_GROUPS.forEach(([gname,names])=>{
-  const h=document.createElement('div'); h.className='seg'; h.textContent=gname; showWrap.appendChild(h);
+  if(gname){ const h=document.createElement('div'); h.className='seg'; h.textContent=gname; showWrap.appendChild(h); }
   const row=document.createElement('div'); row.style.cssText='display:flex;flex-wrap:wrap;gap:5px;margin-bottom:6px'; showWrap.appendChild(row);
   names.forEach(name=>{ if(!SHOWCASE[name]) return; const b=document.createElement('button'); b.className='btn chip'; b.textContent=name;
     b.addEventListener('click', ()=> applyConfig(SHOWCASE[name]())); row.appendChild(b); });
@@ -1480,7 +1621,7 @@ const railReset=document.getElementById('railReset'); if(railReset) railReset.ad
 
 // ---------- strip gradient-height handles (drag to set how tall the gradient is) ----------
 const GRAD_EDGE_F=0.78;   // handle sits at the visible colour edge, not the (invisible) navy endpoint
-const _stage=document.getElementById('stage');
+const _stage=document.getElementById('stageInner');   // handles align to the canvas box, not the stage
 const _gradEdit=document.getElementById('gradedit');
 const _gLine=document.getElementById('gline'), _ghTop=document.getElementById('ghTop'), _ghBot=document.getElementById('ghBot');
 function updateGradEdit(){
@@ -1583,292 +1724,214 @@ function updateFieldEdit(){
   }
 }
 
-// ---------- two-page mode switch (Pattern | Thermal) ----------
-const modePatternBtn=document.getElementById('modePattern'), modeThermalBtn=document.getElementById('modeThermal');
-function setMode(m){
-  const thermal = m==='thermal';
-  document.body.classList.toggle('mode-thermal', thermal);
-  modePatternBtn.classList.toggle('on', !thermal);
-  modeThermalBtn.classList.toggle('on', thermal);
+// ---------- canvas aspect ratio ----------
+// Sized in JS rather than CSS aspect-ratio: a canvas has an intrinsic size, so
+// "contain" behaviour from aspect-ratio + max-width/max-height fights the width/height
+// attributes we set for the GL viewport. A plain contain-fit is unambiguous.
+const ASPECTS=[['16:9',16/9],['4:3',4/3],['1:1',1],['4:5',4/5],['9:16',9/16]];
+let AR=1;
+function fitBox(box, el, ar){
+  const cw=box.clientWidth, ch=box.clientHeight;
+  if(cw<8||ch<8) return;
+  let w=cw, h=w/ar;
+  if(h>ch){ h=ch; w=h*ar; }
+  el.style.width=Math.floor(w)+'px'; el.style.height=Math.floor(h)+'px';
 }
-modePatternBtn.addEventListener('click', ()=>setMode('pattern'));
-modeThermalBtn.addEventListener('click', ()=>setMode('thermal'));
-setMode('pattern');
-// thermal effect selector — shows the active effect's canvas + panel
-const THERM={eff:'flow1'};
-function setThermEffect(eff){ THERM.eff=eff;
-  document.querySelectorAll('#thermEffects .theff').forEach(b=>b.classList.toggle('on', b.dataset.eff===eff));
-  document.querySelectorAll('#thermStage .effcanvas').forEach(c=>c.hidden = c.dataset.eff!==eff);
-  document.querySelectorAll('#thermPanel .effpanel').forEach(p=>p.hidden = p.dataset.eff!==eff);
+function applyAspect(){
+  const si=document.getElementById('stageInner'), st=document.getElementById('stage');
+  if(si&&st) fitBox(st, si, AR);
+  if(typeof resizeCanvas==='function') resizeCanvas();          // resize the GL buffer to match
 }
-document.querySelectorAll('#thermEffects .theff').forEach(b=>b.addEventListener('click', ()=>setThermEffect(b.dataset.eff)));
-setThermEffect('flow1');
-
-// ---------- THERMAL page — column-radiate effect (isolated: own GL context + state) ----------
-(function(){
-  const TC=document.getElementById('flow1Canvas');
-  const tgl=TC.getContext('webgl',{preserveDrawingBuffer:true});
-  if(!tgl){ document.getElementById('thermPanel').insertAdjacentHTML('beforeend','<p class="hint">WebGL unavailable.</p>'); return; }
-  const TDEF=()=>({
-    stops:[
-      {pos:0.00,color:'#2e100e'},{pos:0.14,color:'#46141e'},{pos:0.26,color:'#782878'},
-      {pos:0.34,color:'#b4283c'},{pos:0.46,color:'#eb3c14'},{pos:0.60,color:'#fa8c32'},
-      {pos:0.74,color:'#f0be8c'},{pos:0.80,color:'#f5e1c8'},{pos:0.90,color:'#fffaeb'},
-    ],
-    cycles:1, speed:0.09, phase:0, lock:0, soft:1, bars:0.5, base:0.45,
+{ const bar=document.getElementById('arbar');
+  ASPECTS.forEach(([label,ar])=>{
+    const b=document.createElement('button');
+    b.textContent=label; b.classList.toggle('on', ar===AR);
+    b.addEventListener('click',()=>{
+      AR=ar;
+      bar.querySelectorAll('button').forEach(x=>x.classList.toggle('on', x===b));
+      applyAspect();
+    });
+    bar.appendChild(b);
   });
-  let T=TDEF(), tSel=5, tPlaying=true, tPrev=performance.now(), tAcc=0;
-  const TVS='attribute vec2 a;void main(){gl_Position=vec4(a,0.,1.);}';
-  const TFS=`precision highp float;
-  uniform vec2 u_res; uniform sampler2D u_lut;
-  uniform float u_cycles,u_phase,u_offset,u_lock,u_soft,u_bars,u_base;
-  float disc(vec2 p, vec2 c, float r, float s){ float d=distance(p,c);
-    return 1.0/(1.0+exp(clamp((d-r)/max(s*u_soft,1e-4),-30.0,30.0))); }
-  float capsule(vec2 p, vec2 c, float hl, float r, float s){ float dx=max(abs(p.x-c.x)-hl,0.0);
-    float d=sqrt(dx*dx+(p.y-c.y)*(p.y-c.y)); return 1.0/(1.0+exp(clamp((d-r)/max(s*u_soft,1e-4),-30.0,30.0))); }
-  void main(){
-    vec2 p=vec2(gl_FragCoord.x, u_res.y-gl_FragCoord.y)/u_res.y;
-    float cx=(u_res.x/u_res.y)*0.5;
-    float f=0.0;
-    f+=disc(p,vec2(cx,0.155),0.135,0.023);
-    f+=disc(p,vec2(cx,0.425),0.125,0.023);
-    f+=disc(p,vec2(cx,0.665),0.110,0.023);
-    f+=0.5*disc(p,vec2(cx,0.80),0.17,0.085);
-    f+=u_base*disc(p,vec2(cx,0.985),0.37,0.13);
-    f=clamp(f,0.0,1.15);
-    f+=u_bars*capsule(p,vec2(cx,0.155),0.078,0.013,0.010);
-    f+=u_bars*capsule(p,vec2(cx,0.425),0.078,0.013,0.010);
-    f+=u_bars*capsule(p,vec2(cx,0.665),0.085,0.013,0.010);
-    f+=(u_bars+0.05)*capsule(p,vec2(cx,0.915),0.078,0.007,0.004);
-    f=clamp(f,0.0,1.0);
-    float w=(u_lock<0.005)?1.0:1.0-smoothstep(u_lock-0.08,u_lock+0.08,f);   // core-lock weight
-    float t=f*u_cycles + u_phase*w + u_offset;                             // drift (attenuated in core) + manual offset
-    gl_FragColor=vec4(texture2D(u_lut,vec2(fract(t),0.5)).rgb,1.0);        // circular LUT + plain fract, no cap
-  }`;
-  function tsh(ty,src){ const s=tgl.createShader(ty); tgl.shaderSource(s,src); tgl.compileShader(s);
-    if(!tgl.getShaderParameter(s,tgl.COMPILE_STATUS)) throw tgl.getShaderInfoLog(s); return s; }
-  const tprog=tgl.createProgram(); tgl.attachShader(tprog,tsh(tgl.VERTEX_SHADER,TVS)); tgl.attachShader(tprog,tsh(tgl.FRAGMENT_SHADER,TFS));
-  tgl.linkProgram(tprog); tgl.useProgram(tprog);
-  tgl.bindBuffer(tgl.ARRAY_BUFFER,tgl.createBuffer());
-  tgl.bufferData(tgl.ARRAY_BUFFER,new Float32Array([-1,-1,3,-1,-1,3]),tgl.STATIC_DRAW);
-  const tal=tgl.getAttribLocation(tprog,'a'); tgl.enableVertexAttribArray(tal); tgl.vertexAttribPointer(tal,2,tgl.FLOAT,false,0,0);
-  const TU={}; ['u_res','u_lut','u_cycles','u_phase','u_offset','u_lock','u_soft','u_bars','u_base'].forEach(n=>TU[n]=tgl.getUniformLocation(tprog,n));
-  const tlut=tgl.createTexture(); tgl.bindTexture(tgl.TEXTURE_2D,tlut);
-  tgl.texParameteri(tgl.TEXTURE_2D,tgl.TEXTURE_WRAP_S,tgl.REPEAT);            // circular sampling
-  tgl.texParameteri(tgl.TEXTURE_2D,tgl.TEXTURE_WRAP_T,tgl.CLAMP_TO_EDGE);
-  tgl.texParameteri(tgl.TEXTURE_2D,tgl.TEXTURE_MIN_FILTER,tgl.LINEAR);
-  tgl.texParameteri(tgl.TEXTURE_2D,tgl.TEXTURE_MAG_FILTER,tgl.LINEAR);
-  function thx(h){ return [parseInt(h.slice(1,3),16),parseInt(h.slice(3,5),16),parseInt(h.slice(5,7),16)]; }
-  function tSample(t){                                                        // circular: last stop blends into first
-    const s=[...T.stops].sort((a,b)=>a.pos-b.pos); t=((t%1)+1)%1;
-    const ring=[...s,{pos:s[0].pos+1,color:s[0].color}]; let tt=t; if(tt<ring[0].pos) tt+=1;
-    for(let i=0;i<ring.length-1;i++){ const a=ring[i],b=ring[i+1];
-      if(tt>=a.pos&&tt<=b.pos){ const u=(tt-a.pos)/Math.max(b.pos-a.pos,1e-6),A=thx(a.color),B=thx(b.color);
-        return [A[0]+(B[0]-A[0])*u,A[1]+(B[1]-A[1])*u,A[2]+(B[2]-A[2])*u]; } }
-    return thx(s[0].color);
-  }
-  const tgbar=document.getElementById('th_gbar'), tgx=tgbar.getContext('2d'), tgstops=document.getElementById('th_gstops');
-  function tDrawBar(){ const w=tgbar.width,h=tgbar.height; for(let i=0;i<w;i++){ const c=tSample(i/(w-1)); tgx.fillStyle=`rgb(${c[0]|0},${c[1]|0},${c[2]|0})`; tgx.fillRect(i,0,1,h); } }
-  function tUpdateLUT(){ const N=256,d=new Uint8Array(N*4);
-    for(let i=0;i<N;i++){ const c=tSample(i/(N-1)); d[i*4]=c[0]; d[i*4+1]=c[1]; d[i*4+2]=c[2]; d[i*4+3]=255; }
-    tgl.bindTexture(tgl.TEXTURE_2D,tlut); tgl.texImage2D(tgl.TEXTURE_2D,0,tgl.RGBA,N,1,0,tgl.RGBA,tgl.UNSIGNED_BYTE,d); tDrawBar(); }
-  const tStopCol=document.getElementById('th_stopCol'), tStopPos=document.getElementById('th_stopPos');
-  function tSyncStop(){ const s=T.stops[tSel]; if(!s){ tStopPos.textContent='–'; return; } tStopCol.value=s.color; tStopPos.textContent=s.pos.toFixed(3); }
-  function tRebuild(){ tgstops.innerHTML='';
-    T.stops.forEach((s,i)=>{ const el=document.createElement('div'); el.className='th-stop'+(i===tSel?' sel':'');
-      el.style.left=(s.pos*100)+'%'; el.style.background=s.color; el.title=s.pos.toFixed(2);
-      el.addEventListener('pointerdown',ev=>{ ev.preventDefault(); tSel=i; tRebuild(); tSyncStop();
-        const rect=tgstops.getBoundingClientRect();
-        const move=e=>{ T.stops[i].pos=Math.min(1,Math.max(0,(e.clientX-rect.left)/rect.width)); el.style.left=(T.stops[i].pos*100)+'%'; tSyncStop(); tUpdateLUT(); };
-        const up=()=>{ window.removeEventListener('pointermove',move); window.removeEventListener('pointerup',up); };
-        window.addEventListener('pointermove',move); window.addEventListener('pointerup',up); });
-      tgstops.appendChild(el); });
-    tSyncStop();
-  }
-  tStopCol.addEventListener('input',()=>{ if(T.stops[tSel]){ T.stops[tSel].color=tStopCol.value; tRebuild(); tUpdateLUT(); } });
-  tgbar.addEventListener('dblclick',e=>{ const r=tgbar.getBoundingClientRect(),pos=Math.min(1,Math.max(0,(e.clientX-r.left)/r.width));
-    const c=tSample(pos); T.stops.push({pos,color:'#'+[c[0],c[1],c[2]].map(v=>(v|0).toString(16).padStart(2,'0')).join('')});
-    tSel=T.stops.length-1; tRebuild(); tUpdateLUT(); });
-  document.getElementById('th_delStop').addEventListener('click',()=>{ if(T.stops.length<=2) return; T.stops.splice(tSel,1); tSel=Math.max(0,tSel-1); tRebuild(); tUpdateLUT(); });
-  function tBind(id,key,fmt){ const inp=document.getElementById(id),val=document.getElementById(id+'V'); inp.value=T[key]; val.textContent=fmt(T[key]);
-    inp.addEventListener('input',()=>{ T[key]=parseFloat(inp.value); val.textContent=fmt(T[key]); }); }
-  function tBindAll(){ tBind('th_cycles','cycles',v=>v.toFixed(0)); tBind('th_speed','speed',v=>v.toFixed(3)); tBind('th_phase','phase',v=>v.toFixed(3));
-    tBind('th_lock','lock',v=>v.toFixed(2)); tBind('th_soft','soft',v=>v.toFixed(2)); tBind('th_bars','bars',v=>v.toFixed(2)); tBind('th_base','base',v=>v.toFixed(2)); }
-  tBindAll();
-  const tPlayBtn=document.getElementById('th_play');
-  function tSetPlay(p){ tPlaying=p; tPlayBtn.textContent=p?'Pause':'Play'; tPlayBtn.classList.toggle('on',!p); tPrev=performance.now(); }
-  tPlayBtn.addEventListener('click',()=>tSetPlay(!tPlaying));
-  document.getElementById('th_reset').addEventListener('click',()=>{ T=TDEF(); tSel=5; tAcc=0; tBindAll(); tRebuild(); tUpdateLUT(); });
-  document.getElementById('th_export').addEventListener('click',()=>{ tRender(); TC.toBlob(b=>{ const a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download='flow-1.png'; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),2000); },'image/png'); });
-  function tResize(){ const r=TC.getBoundingClientRect(), dpr=Math.min(window.devicePixelRatio||1,2);
-    const w=Math.max(1,Math.round(r.width*dpr)), h=Math.max(1,Math.round(r.height*dpr));
-    if(TC.width!==w||TC.height!==h){ TC.width=w; TC.height=h; tgl.viewport(0,0,w,h); } }
-  function tRender(){ tResize(); tgl.useProgram(tprog); tgl.uniform2f(TU.u_res,TC.width,TC.height);
-    tgl.activeTexture(tgl.TEXTURE0); tgl.bindTexture(tgl.TEXTURE_2D,tlut); tgl.uniform1i(TU.u_lut,0);
-    tgl.uniform1f(TU.u_cycles,T.cycles);
-    const raw=tAcc*T.speed;
-    const drift = T.lock<0.005 ? raw : Math.abs(((raw*0.5)%1+1)%1*2-1);     // one-way vs ping-pong
-    tgl.uniform1f(TU.u_phase,drift); tgl.uniform1f(TU.u_offset,T.phase);
-    tgl.uniform1f(TU.u_lock,T.lock); tgl.uniform1f(TU.u_soft,T.soft); tgl.uniform1f(TU.u_bars,T.bars); tgl.uniform1f(TU.u_base,T.base);
-    tgl.drawArrays(tgl.TRIANGLES,0,3); }
-  function tLoop(now){ if(document.body.classList.contains('mode-thermal') && THERM.eff==='flow1'){ if(tPlaying) tAcc+=(now-tPrev)/1000; tRender(); } tPrev=now; requestAnimationFrame(tLoop); }
-  tRebuild(); tUpdateLUT(); requestAnimationFrame(tLoop);
-})();
+}
+window.addEventListener('resize', applyAspect);
 
-// ---------- Flow 2 — shape → 4-pin variable blur → circular Colorama (phase loop) ----------
-(function(){
-  const TC=document.getElementById('flow2Canvas');
-  const tgl=TC.getContext('webgl',{preserveDrawingBuffer:true});
-  if(!tgl){ return; }
-  function thx(h){ return [parseInt(h.slice(1,3),16),parseInt(h.slice(3,5),16),parseInt(h.slice(5,7),16)]; }
-  const F2DEF=()=>({
-    text:'A',
-    pins:[{x:0.13,y:0.51,v:1},{x:0.90,y:0.50,v:1},{x:0.50,y:0.30,v:0},{x:0.50,y:0.84,v:0}],
-    blurMax:1.0, blend:3.4, cycles:1, speed:0.576, phase:0, showMap:false,
-    stops:[{pos:0.00,color:'#0a0400'},{pos:0.10,color:'#8a1e00'},{pos:0.30,color:'#e04800'},{pos:0.50,color:'#ff7a12'},{pos:0.62,color:'#ffb44e'},{pos:0.72,color:'#fff2d6'},{pos:0.84,color:'#f0881e'},{pos:0.96,color:'#521200'}],
+// ---------- Three-tier settings (Browse / Simple / Advanced) ----------
+// Macros don't replace the sliders, they sit ABOVE them: each writes several P keys along a
+// tuned curve. They are deliberately ONE-WAY. The moment an Advanced edit moves a key out
+// from under a macro, that macro is marked "custom" (a dot) and stops claiming to represent
+// the state -- it never silently snaps your edit back. Trying to make them perfectly
+// two-way invertible is where this pattern usually dies.
+const lerp=(a,b,t)=>a+(b-a)*t;
+const unlerp=(a,b,v)=>Math.min(1,Math.max(0,(v-a)/(b-a)));
+const near=(a,b)=>Math.abs(a-b) < Math.max(0.002, Math.abs(b)*0.03);
+
+// RELATIVE macros. The first build made them ABSOLUTE (each slider mapped 0..1 onto a fixed
+// curve) and testing killed that idea immediately: on the default hand-tuned look, 4 of 5
+// macros read "custom" — a tuned look never lands on a macro's curve, so the Simple panel
+// opened full of sliders that meant nothing until you destroyed the look to make them true.
+//
+// So: a macro is an OFFSET from the loaded look, not a position. Each key is normalised into
+// its own range, nudged by the slider, and mapped back. 0 = the look exactly as loaded, so
+// EVERY look (including Surprise-me results) is adjustable, and "drift" stops being a concept.
+const MACROS={
+  motion:{ label:'Motion', hint:'anim speed / both wave speeds / colour flow',
+    keys:{ gspeed:[0.05,1.2], w1s:[0.1,2.0], w2s:[0.05,1.4], cps:[0,0.25] } },
+  scale:{ label:'Scale', hint:'wave widths / strip width / gradient span',
+    keys:{ w1w:[120,900], w2w:[40,420], stripW:[140,520], gradHalf:[320,900] } },
+  intensity:{ label:'Intensity', hint:'wave heights',
+    keys:{ w1h:[8,260], w2h:[4,200] } },
+  softness:{ label:'Softness', hint:'source blur',
+    keys:{ blur:[0,220] } },
+  grit:{ label:'Grit', hint:'grain / dot dither',
+    keys:{ grain:[0.02,0.35] } },
+};
+const MACRO_KEYS=[].concat(...Object.values(MACROS).map(m=>Object.keys(m.keys)));
+
+// The look as loaded — macros offset FROM this. Re-snapshot whenever the look changes
+// wholesale (preset, Look chip, Surprise me, Reset) or an Advanced edit rebases a key.
+let BASE={};
+function rebase(){ MACRO_KEYS.forEach(k=>BASE[k]=P[k]); Object.values(macroEls).forEach(e=>{ e.input.value=0; e.val.textContent='0'; }); }
+
+const INT_KEYS=new Set(['w1w','w2w','stripW','gradHalf','w1h','w2h','blur']);
+function applyMacro(m, v){
+  for(const [k,[lo,hi]] of Object.entries(m.keys)){
+    const t=Math.min(1, Math.max(0, unlerp(lo,hi,BASE[k]) + v*0.5));   // +-half the range
+    let out=lerp(lo,hi,t);
+    P[k] = INT_KEYS.has(k) ? Math.round(out) : +out.toFixed(3);
+  }
+  if(m.label==='Grit'){ P.grain_on = P.grain > 0.04; P.dot_on = P.grain > 0.25; }   // the toggles follow the amount
+}
+
+// one dropdown standing in for five flags
+const SYMMETRY={
+  none:    {mon:false, mhon:false, kon:false, radial:false},
+  mirror:  {mon:true,  mhon:false, kon:false, radial:false},
+  fold:    {mon:true,  mhon:true,  kon:false, radial:false},
+  radial:  {mon:true,  mhon:true,  kon:false, radial:true },
+  kaleido: {mon:false, mhon:false, kon:true,  radial:false},
+};
+const symmetryOf=()=> Object.keys(SYMMETRY).find(k=>
+  Object.entries(SYMMETRY[k]).every(([f,v])=>P[f]===v)) || '';
+
+const macroEls={};
+function buildSimplePanel(){
+  const el=document.getElementById('simplePanel');
+  el.innerHTML='';
+  const mk=(html)=>{ const d=document.createElement('div'); d.innerHTML=html; return d.firstElementChild; };
+
+  el.appendChild(mk('<div class="seg" style="margin-top:6px">Source</div>'));
+  const srcRow=mk('<div style="display:flex;gap:6px;margin-bottom:6px"><button class="btn" id="sm_shape" style="flex:1">Shape</button><button class="btn" id="sm_strip" style="flex:1">Strip</button></div>');
+  el.appendChild(srcRow);
+  const loadRow=mk('<div style="margin-bottom:4px"><button class="btn" id="sm_load" style="width:100%">Load SVG / PNG&hellip;</button>'+
+    '<input type="file" id="sm_file" accept=".svg,.png,.jpg,.jpeg,.webp,image/*" style="display:none"></div>');
+  el.appendChild(loadRow);
+  const smFile=loadRow.querySelector('#sm_file');
+  loadRow.querySelector('#sm_load').addEventListener('click', ()=>smFile.click());
+  smFile.addEventListener('change', ()=>{
+    loadSourceFile(smFile.files && smFile.files[0]);
+    smFile.value='';                      // so re-picking the same file fires change again
+    syncAllControls(); rebase(); syncSimple();
   });
-  let F=F2DEF(), fPin=3, fStop=0, fPlaying=true, fPrev=performance.now(), fAcc=0, fDragPin=-1;
+  srcRow.querySelector('#sm_shape').addEventListener('click', ()=>{ srcFromSVG(DEFAULT_SVG); P.srcMode=1; syncAllControls(); syncSimple(); });
+  srcRow.querySelector('#sm_strip').addEventListener('click', ()=>{ P.srcMode=0; syncAllControls(); syncSimple(); });
 
-  // ---- source (3:4) -> Gaussian blur pyramid (level 0 = sharp .. 4 = softest) ----
-  const SW=768, SH=1024, NL=5;
-  const srcC=document.createElement('canvas'); srcC.width=SW; srcC.height=SH; const sx=srcC.getContext('2d');
-  const quad=tgl.createBuffer(); tgl.bindBuffer(tgl.ARRAY_BUFFER,quad); tgl.bufferData(tgl.ARRAY_BUFFER,new Float32Array([-1,-1,3,-1,-1,3]),tgl.STATIC_DRAW);
-  function fsh(ty,src){ const s=tgl.createShader(ty); tgl.shaderSource(s,src); tgl.compileShader(s); if(!tgl.getShaderParameter(s,tgl.COMPILE_STATUS)) throw tgl.getShaderInfoLog(s); return s; }
-  function mkProg(fsSrc){ const p=tgl.createProgram(); tgl.attachShader(p,fsh(tgl.VERTEX_SHADER,'attribute vec2 a;void main(){gl_Position=vec4(a,0.,1.);}')); tgl.attachShader(p,fsh(tgl.FRAGMENT_SHADER,fsSrc)); tgl.linkProgram(p); return p; }
-  function useQuad(p){ tgl.useProgram(p); const al=tgl.getAttribLocation(p,'a'); tgl.bindBuffer(tgl.ARRAY_BUFFER,quad); tgl.enableVertexAttribArray(al); tgl.vertexAttribPointer(al,2,tgl.FLOAT,false,0,0); }
-  function mkLevel(w,h){ const t=tgl.createTexture(); tgl.bindTexture(tgl.TEXTURE_2D,t); tgl.texImage2D(tgl.TEXTURE_2D,0,tgl.RGBA,w,h,0,tgl.RGBA,tgl.UNSIGNED_BYTE,null);
-    tgl.texParameteri(tgl.TEXTURE_2D,tgl.TEXTURE_WRAP_S,tgl.CLAMP_TO_EDGE); tgl.texParameteri(tgl.TEXTURE_2D,tgl.TEXTURE_WRAP_T,tgl.CLAMP_TO_EDGE);
-    tgl.texParameteri(tgl.TEXTURE_2D,tgl.TEXTURE_MIN_FILTER,tgl.LINEAR); tgl.texParameteri(tgl.TEXTURE_2D,tgl.TEXTURE_MAG_FILTER,tgl.LINEAR);
-    const f=tgl.createFramebuffer(); tgl.bindFramebuffer(tgl.FRAMEBUFFER,f); tgl.framebufferTexture2D(tgl.FRAMEBUFFER,tgl.COLOR_ATTACHMENT0,tgl.TEXTURE_2D,t,0); return {w,h,tex:t,fbo:f}; }
-  const lv=[], tp=[]; { let w=SW,h=SH; for(let i=0;i<NL;i++){ lv.push(mkLevel(w,h)); tp.push(mkLevel(w,h)); w=Math.max(2,w>>1); h=Math.max(2,h>>1); } }
-  const srcTex=mkLevel(SW,SH).tex;
-  tgl.bindFramebuffer(tgl.FRAMEBUFFER,null);
-  const BLUR=mkProg(`precision highp float; uniform sampler2D u_tex; uniform vec2 u_res,u_dir;
-    void main(){ vec2 uv=gl_FragCoord.xy/u_res; vec2 st=u_dir/u_res;
-      float w0=0.2270,w1=0.1946,w2=0.1216,w3=0.0540,w4=0.0162;
-      vec3 c=texture2D(u_tex,uv).rgb*w0;
-      c+=(texture2D(u_tex,uv+st).rgb+texture2D(u_tex,uv-st).rgb)*w1;
-      c+=(texture2D(u_tex,uv+st*2.0).rgb+texture2D(u_tex,uv-st*2.0).rgb)*w2;
-      c+=(texture2D(u_tex,uv+st*3.0).rgb+texture2D(u_tex,uv-st*3.0).rgb)*w3;
-      c+=(texture2D(u_tex,uv+st*4.0).rgb+texture2D(u_tex,uv-st*4.0).rgb)*w4;
-      gl_FragColor=vec4(c,1.0); }`);
-  const BU={}; ['u_tex','u_res','u_dir'].forEach(n=>BU[n]=tgl.getUniformLocation(BLUR,n));
-  function blurInto(dst,srcT,dir){ tgl.bindFramebuffer(tgl.FRAMEBUFFER,dst.fbo); tgl.viewport(0,0,dst.w,dst.h);
-    tgl.activeTexture(tgl.TEXTURE0); tgl.bindTexture(tgl.TEXTURE_2D,srcT); tgl.uniform1i(BU.u_tex,0);
-    tgl.uniform2f(BU.u_res,dst.w,dst.h); tgl.uniform2f(BU.u_dir,dir[0],dir[1]); tgl.drawArrays(tgl.TRIANGLES,0,3); }
-  function buildPyramid(){ useQuad(BLUR);
-    blurInto(lv[0],srcTex,[0,0]);                        // level 0 = sharp source
-    for(let k=1;k<NL;k++){ blurInto(tp[k],lv[k-1].tex,[1.5,0]); blurInto(lv[k],tp[k].tex,[0,1.5]); }  // downsample + separable blur
-    tgl.bindFramebuffer(tgl.FRAMEBUFFER,null); }
-  function drawSrc(){
-    sx.fillStyle='#000'; sx.fillRect(0,0,SW,SH); sx.fillStyle='#fff'; sx.textAlign='center'; sx.textBaseline='middle';
-    const txt=F.text||'A'; let size=Math.round(SH*0.72); sx.font='900 '+size+'px -apple-system,Arial,sans-serif';
-    while(sx.measureText(txt).width>SW*0.9 && size>40){ size-=20; sx.font='900 '+size+'px -apple-system,Arial,sans-serif'; }
-    sx.fillText(txt,SW/2,SH/2);
-    tgl.bindTexture(tgl.TEXTURE_2D,srcTex); tgl.texImage2D(tgl.TEXTURE_2D,0,tgl.RGBA,tgl.RGBA,tgl.UNSIGNED_BYTE,srcC);
-    tgl.texParameteri(tgl.TEXTURE_2D,tgl.TEXTURE_MIN_FILTER,tgl.LINEAR); tgl.texParameteri(tgl.TEXTURE_2D,tgl.TEXTURE_MAG_FILTER,tgl.LINEAR);
-    buildPyramid();
+  el.appendChild(mk('<div class="seg">Adjust the look</div>'));
+  for(const key of Object.keys(MACROS)){
+    const m=MACROS[key];
+    const wrap=mk('<div class="macro" data-macro="'+key+'">'+
+      '<div class="mrow"><label>'+m.label+'</label>'+
+      '<input type="range" min="-1" max="1" step="0.02" value="0"><span class="val">0</span></div>'+
+      '<div class="why">'+m.hint+'</div></div>');
+    const input=wrap.querySelector('input'), val=wrap.querySelector('.val');
+    input.addEventListener('input', ()=>{
+      const v=parseFloat(input.value);
+      val.textContent=(v>0?'+':'')+Math.round(v*100);
+      applyMacro(m, v);        // offset from the look as loaded
+      syncAllControls();       // refresh the Advanced panel
+      syncSimple();
+    });
+    // hover teaches the mapping: light up the Advanced rows this macro drives
+    wrap.addEventListener('mouseenter', ()=> Object.keys(m.keys).forEach(k=>{
+      const r=ctlEl(k); const row=r&&r.closest('.row,.sub'); if(row) row.classList.add('drives');
+    }));
+    wrap.addEventListener('mouseleave', ()=> document.querySelectorAll('.drives').forEach(r=>r.classList.remove('drives')));
+    el.appendChild(wrap);
+    macroEls[key]={wrap,input,val};
   }
-  const FS=`precision highp float;
-  uniform vec2 u_res; uniform float u_asp;
-  uniform sampler2D u_l0,u_l1,u_l2,u_l3,u_l4,u_lut;
-  uniform vec2 u_pn0,u_pn1,u_pn2,u_pn3; uniform float u_v0,u_v1,u_v2,u_v3;
-  uniform float u_blend,u_amt,u_cycles,u_phase,u_offset,u_showMap;
-  float bmap(vec2 pp){
-    vec2 P0=vec2(u_pn0.x*u_asp,u_pn0.y),P1=vec2(u_pn1.x*u_asp,u_pn1.y),P2=vec2(u_pn2.x*u_asp,u_pn2.y),P3=vec2(u_pn3.x*u_asp,u_pn3.y);
-    float w0=1.0/(pow(distance(pp,P0),u_blend)+1e-3), w1=1.0/(pow(distance(pp,P1),u_blend)+1e-3);
-    float w2=1.0/(pow(distance(pp,P2),u_blend)+1e-3), w3=1.0/(pow(distance(pp,P3),u_blend)+1e-3);
-    return (w0*u_v0+w1*u_v1+w2*u_v2+w3*u_v3)/(w0+w1+w2+w3);
-  }
-  void main(){
-    vec2 p=vec2(gl_FragCoord.x, u_res.y-gl_FragCoord.y)/u_res.y;
-    float m=bmap(p);
-    if(u_showMap>0.5){
-      vec3 col=vec3(m);
-      vec2 P0=vec2(u_pn0.x*u_asp,u_pn0.y),P1=vec2(u_pn1.x*u_asp,u_pn1.y),P2=vec2(u_pn2.x*u_asp,u_pn2.y),P3=vec2(u_pn3.x*u_asp,u_pn3.y);
-      float ring=0.0;
-      ring+=smoothstep(0.006,0.002,abs(distance(p,P0)-0.02)); ring+=smoothstep(0.006,0.002,abs(distance(p,P1)-0.02));
-      ring+=smoothstep(0.006,0.002,abs(distance(p,P2)-0.02)); ring+=smoothstep(0.006,0.002,abs(distance(p,P3)-0.02));
-      col=mix(col,vec3(0.42,0.45,1.0),clamp(ring,0.0,1.0));
-      gl_FragColor=vec4(col,1.0); return;
-    }
-    vec2 uv=vec2(p.x/u_asp, p.y);
-    float L=clamp(m*u_amt*4.0, 0.0, 4.0);                       // 0 sharp .. 4 softest
-    vec3 c0=texture2D(u_l0,uv).rgb,c1=texture2D(u_l1,uv).rgb,c2=texture2D(u_l2,uv).rgb,c3=texture2D(u_l3,uv).rgb,c4=texture2D(u_l4,uv).rgb;
-    vec3 c; if(L<1.0) c=mix(c0,c1,L); else if(L<2.0) c=mix(c1,c2,L-1.0); else if(L<3.0) c=mix(c2,c3,L-2.0); else c=mix(c3,c4,L-3.0);
-    float lum=dot(c,vec3(0.299,0.587,0.114));
-    float t=lum*u_cycles + u_phase + u_offset;
-    gl_FragColor=vec4(texture2D(u_lut,vec2(fract(t),0.5)).rgb,1.0);
-  }`;
-  const prog=mkProg(FS);
-  const U={}; ['u_res','u_asp','u_l0','u_l1','u_l2','u_l3','u_l4','u_lut','u_pn0','u_pn1','u_pn2','u_pn3','u_v0','u_v1','u_v2','u_v3','u_blend','u_amt','u_cycles','u_phase','u_offset','u_showMap'].forEach(n=>U[n]=tgl.getUniformLocation(prog,n));
-  const f2lut=tgl.createTexture(); tgl.bindTexture(tgl.TEXTURE_2D,f2lut);
-  tgl.texParameteri(tgl.TEXTURE_2D,tgl.TEXTURE_WRAP_S,tgl.REPEAT); tgl.texParameteri(tgl.TEXTURE_2D,tgl.TEXTURE_WRAP_T,tgl.CLAMP_TO_EDGE);
-  tgl.texParameteri(tgl.TEXTURE_2D,tgl.TEXTURE_MIN_FILTER,tgl.LINEAR); tgl.texParameteri(tgl.TEXTURE_2D,tgl.TEXTURE_MAG_FILTER,tgl.LINEAR);
-  // ---- circular gradient editor ----
-  function f2Sample(t){ const s=[...F.stops].sort((a,b)=>a.pos-b.pos); t=((t%1)+1)%1; const ring=[...s,{pos:s[0].pos+1,color:s[0].color}]; let tt=t; if(tt<ring[0].pos) tt+=1;
-    for(let i=0;i<ring.length-1;i++){ const a=ring[i],b=ring[i+1]; if(tt>=a.pos&&tt<=b.pos){ const u=(tt-a.pos)/Math.max(b.pos-a.pos,1e-6),A=thx(a.color),B=thx(b.color); return [A[0]+(B[0]-A[0])*u,A[1]+(B[1]-A[1])*u,A[2]+(B[2]-A[2])*u]; } } return thx(s[0].color); }
-  const f2gbar=document.getElementById('f2_gbar'), f2gx=f2gbar.getContext('2d'), f2gstops=document.getElementById('f2_gstops');
-  function f2DrawBar(){ const w=f2gbar.width,h=f2gbar.height; for(let i=0;i<w;i++){ const c=f2Sample(i/(w-1)); f2gx.fillStyle=`rgb(${c[0]|0},${c[1]|0},${c[2]|0})`; f2gx.fillRect(i,0,1,h); } }
-  function f2UpdateLUT(){ const N=256,d=new Uint8Array(N*4); for(let i=0;i<N;i++){ const c=f2Sample(i/(N-1)); d[i*4]=c[0];d[i*4+1]=c[1];d[i*4+2]=c[2];d[i*4+3]=255; } tgl.bindTexture(tgl.TEXTURE_2D,f2lut); tgl.texImage2D(tgl.TEXTURE_2D,0,tgl.RGBA,N,1,0,tgl.RGBA,tgl.UNSIGNED_BYTE,d); f2DrawBar(); }
-  const f2StopCol=document.getElementById('f2_stopCol'), f2StopPos=document.getElementById('f2_stopPos');
-  function f2SyncStop(){ const s=F.stops[fStop]; if(!s){ f2StopPos.textContent='–'; return; } f2StopCol.value=s.color; f2StopPos.textContent=s.pos.toFixed(3); }
-  function f2Rebuild(){ f2gstops.innerHTML=''; F.stops.forEach((s,i)=>{ const el=document.createElement('div'); el.className='th-stop'+(i===fStop?' sel':''); el.style.left=(s.pos*100)+'%'; el.style.background=s.color; el.title=s.pos.toFixed(2);
-    el.addEventListener('pointerdown',ev=>{ ev.preventDefault(); fStop=i; f2Rebuild(); f2SyncStop(); const rect=f2gstops.getBoundingClientRect();
-      const move=e=>{ F.stops[i].pos=Math.min(1,Math.max(0,(e.clientX-rect.left)/rect.width)); el.style.left=(F.stops[i].pos*100)+'%'; f2SyncStop(); f2UpdateLUT(); };
-      const up=()=>{ window.removeEventListener('pointermove',move); window.removeEventListener('pointerup',up); }; window.addEventListener('pointermove',move); window.addEventListener('pointerup',up); });
-    f2gstops.appendChild(el); }); f2SyncStop(); }
-  f2StopCol.addEventListener('input',()=>{ if(F.stops[fStop]){ F.stops[fStop].color=f2StopCol.value; f2Rebuild(); f2UpdateLUT(); } });
-  f2gbar.addEventListener('dblclick',e=>{ const r=f2gbar.getBoundingClientRect(),pos=Math.min(1,Math.max(0,(e.clientX-r.left)/r.width)); const c=f2Sample(pos); F.stops.push({pos,color:'#'+[c[0],c[1],c[2]].map(v=>(v|0).toString(16).padStart(2,'0')).join('')}); fStop=F.stops.length-1; f2Rebuild(); f2UpdateLUT(); });
-  document.getElementById('f2_delStop').onclick=()=>{ if(F.stops.length<=2) return; F.stops.splice(fStop,1); fStop=Math.max(0,fStop-1); f2Rebuild(); f2UpdateLUT(); };
-  // ---- pin value toggles ----
-  const f2pins=document.getElementById('f2_pins');
-  function renderPins(){ f2pins.innerHTML=''; F.pins.forEach((pn,i)=>{ const b=document.createElement('button'); b.className='th-sm'; b.textContent=(i+1); b.style.marginLeft='0';
-    b.style.background=pn.v>0.5?'#e8e8e8':'#111'; b.style.color=pn.v>0.5?'#111':'#888'; b.style.borderColor=i===fPin?'#6b6bff':'#2a2a26';
-    b.title=pn.v>0.5?'white = blur':'black = sharp';
-    b.onclick=()=>{ pn.v=pn.v>0.5?0:1; fPin=i; renderPins(); }; f2pins.appendChild(b); }); }
-  // ---- sliders ----
-  const F2SL=[['f2_blurMax','blurMax',v=>v.toFixed(2)],['f2_blend','blend',v=>v.toFixed(1)],['f2_cycles','cycles',v=>v.toFixed(0)],['f2_speed','speed',v=>v.toFixed(3)],['f2_phase','phase',v=>v.toFixed(3)]];
-  F2SL.forEach(([id,key,fmt])=>{ document.getElementById(id).addEventListener('input',e=>{ F[key]=parseFloat(e.target.value); document.getElementById(id+'V').textContent=fmt(F[key]); }); });
-  function fSyncSliders(){ F2SL.forEach(([id,key,fmt])=>{ document.getElementById(id).value=F[key]; document.getElementById(id+'V').textContent=fmt(F[key]); }); document.getElementById('f2_text').value=F.text; }
-  document.getElementById('f2_setText').onclick=()=>{ F.text=document.getElementById('f2_text').value||'A'; drawSrc(); };
-  const f2ShowBtn=document.getElementById('f2_showMap');
-  f2ShowBtn.onclick=()=>{ F.showMap=!F.showMap; f2ShowBtn.classList.toggle('on',F.showMap); f2ShowBtn.textContent=F.showMap?'Hide':'Show'; };
-  const f2Play=document.getElementById('f2_play');
-  function f2SetPlay(p){ fPlaying=p; f2Play.textContent=p?'Pause':'Play'; f2Play.classList.toggle('on',!p); fPrev=performance.now(); }
-  f2Play.onclick=()=>f2SetPlay(!fPlaying);
-  document.getElementById('f2_reset').onclick=()=>{ F=F2DEF(); fPin=3; fStop=0; fAcc=0; drawSrc(); fSyncSliders(); renderPins(); f2Rebuild(); f2UpdateLUT(); f2ShowBtn.classList.remove('on'); f2ShowBtn.textContent='Show'; };
-  document.getElementById('f2_export').onclick=()=>{ fRender(); TC.toBlob(b=>{ const a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download='flow-2.png'; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),2000); },'image/png'); };
-  // ---- pin drag on canvas (when the blur map is shown) ----
-  TC.addEventListener('pointerdown',e=>{ if(!F.showMap) return; const rect=TC.getBoundingClientRect(), asp=rect.width/rect.height;
-    const uvx=(e.clientX-rect.left)/rect.width, uvy=(e.clientY-rect.top)/rect.height;
-    let best=-1,bd=1e9; F.pins.forEach((pn,i)=>{ const d=Math.hypot((pn.x-uvx)*asp,pn.y-uvy); if(d<bd){bd=d;best=i;} });
-    if(bd>0.07) return; fDragPin=best; fPin=best; renderPins();
-    const move=ev=>{ F.pins[fDragPin].x=Math.min(1,Math.max(0,(ev.clientX-rect.left)/rect.width)); F.pins[fDragPin].y=Math.min(1,Math.max(0,(ev.clientY-rect.top)/rect.height)); };
-    const up=()=>{ fDragPin=-1; window.removeEventListener('pointermove',move); window.removeEventListener('pointerup',up); };
-    window.addEventListener('pointermove',move); window.addEventListener('pointerup',up); });
-  // ---- render / loop ----
-  function fResize(){ const r=TC.getBoundingClientRect(), dpr=Math.min(window.devicePixelRatio||1,2); const w=Math.max(1,Math.round(r.width*dpr)), h=Math.max(1,Math.round(r.height*dpr)); if(TC.width!==w||TC.height!==h){ TC.width=w; TC.height=h; tgl.viewport(0,0,w,h); } }
-  function fRender(){ fResize(); tgl.bindFramebuffer(tgl.FRAMEBUFFER,null); useQuad(prog); tgl.viewport(0,0,TC.width,TC.height);
-    tgl.uniform2f(U.u_res,TC.width,TC.height); tgl.uniform1f(U.u_asp,TC.width/TC.height);
-    tgl.activeTexture(tgl.TEXTURE0); tgl.bindTexture(tgl.TEXTURE_2D,lv[0].tex); tgl.uniform1i(U.u_l0,0);
-    tgl.activeTexture(tgl.TEXTURE1); tgl.bindTexture(tgl.TEXTURE_2D,lv[1].tex); tgl.uniform1i(U.u_l1,1);
-    tgl.activeTexture(tgl.TEXTURE2); tgl.bindTexture(tgl.TEXTURE_2D,lv[2].tex); tgl.uniform1i(U.u_l2,2);
-    tgl.activeTexture(tgl.TEXTURE3); tgl.bindTexture(tgl.TEXTURE_2D,lv[3].tex); tgl.uniform1i(U.u_l3,3);
-    tgl.activeTexture(tgl.TEXTURE4); tgl.bindTexture(tgl.TEXTURE_2D,lv[4].tex); tgl.uniform1i(U.u_l4,4);
-    tgl.activeTexture(tgl.TEXTURE5); tgl.bindTexture(tgl.TEXTURE_2D,f2lut); tgl.uniform1i(U.u_lut,5);
-    tgl.uniform2f(U.u_pn0,F.pins[0].x,F.pins[0].y); tgl.uniform2f(U.u_pn1,F.pins[1].x,F.pins[1].y); tgl.uniform2f(U.u_pn2,F.pins[2].x,F.pins[2].y); tgl.uniform2f(U.u_pn3,F.pins[3].x,F.pins[3].y);
-    tgl.uniform1f(U.u_v0,F.pins[0].v); tgl.uniform1f(U.u_v1,F.pins[1].v); tgl.uniform1f(U.u_v2,F.pins[2].v); tgl.uniform1f(U.u_v3,F.pins[3].v);
-    tgl.uniform1f(U.u_blend,F.blend); tgl.uniform1f(U.u_amt,F.blurMax); tgl.uniform1f(U.u_cycles,F.cycles);
-    tgl.uniform1f(U.u_phase,fAcc*F.speed); tgl.uniform1f(U.u_offset,F.phase); tgl.uniform1f(U.u_showMap,F.showMap?1:0);
-    tgl.drawArrays(tgl.TRIANGLES,0,3); }
-  function fLoop(now){ if(document.body.classList.contains('mode-thermal') && THERM.eff==='flow2'){ if(fPlaying) fAcc+=(now-fPrev)/1000; fRender(); } fPrev=now; requestAnimationFrame(fLoop); }
-  drawSrc(); fSyncSliders(); renderPins(); f2Rebuild(); f2UpdateLUT(); requestAnimationFrame(fLoop);
-})();
+
+  const symRow=mk('<div class="row" style="margin-top:12px"><label>Symmetry</label><select id="sm_sym" style="grid-column:2/4">'+
+    Object.keys(SYMMETRY).map(k=>'<option value="'+k+'">'+k+'</option>').join('')+'<option value="">custom</option></select></div>');
+  el.appendChild(symRow);
+  symRow.querySelector('#sm_sym').addEventListener('change', e=>{
+    if(!e.target.value) return;
+    Object.assign(P, SYMMETRY[e.target.value]); syncAllControls(); rebase(); syncSimple();
+  });
+
+  el.appendChild(mk('<div class="seg" style="margin-top:14px">Colour</div>'));
+  const colRow=mk('<div style="display:flex;gap:6px"><select id="sm_pal" style="flex:1">'+
+    '<option value="">custom</option>'+
+    Object.keys(PALETTES).map(n=>'<option>'+n+'</option>').join('')+'</select><button class="btn" id="sm_rnd">Random</button></div>');
+  el.appendChild(colRow);
+  const setPal=n=>{ stops=PALETTES[n].map(s=>({...s})); renderStops(); updateLUT(); };
+  colRow.querySelector('#sm_pal').addEventListener('change', e=>{ if(e.target.value) setPal(e.target.value); });
+  colRow.querySelector('#sm_rnd').addEventListener('click', ()=>{
+    const names=Object.keys(PALETTES), n=names[Math.floor(Math.random()*names.length)];
+    setPal(n); syncSimple();
+  });
+
+  el.appendChild(mk('<p class="hint" style="margin-top:12px">Each control nudges several settings at once, relative to the look you loaded &mdash; hover to see which. Centre = the look untouched.</p>'));
+}
+
+// No "custom" state any more: a macro is an offset, so it's always valid. Only the
+// non-macro widgets need syncing.
+// Which named palette are the current stops, if any? A saved look's ramp usually isn't one —
+// the dropdown must say "custom" rather than naming a palette the look isn't using.
+function paletteOf(){
+  return Object.keys(PALETTES).find(n=>{
+    const q=PALETTES[n];
+    return q.length===stops.length && q.every((s,i)=>
+      Math.abs(s.pos-stops[i].pos)<0.005 && s.color.toLowerCase()===stops[i].color.toLowerCase());
+  }) || '';
+}
+function syncSimple(){
+  const pal=document.getElementById('sm_pal');
+  if(pal) pal.value=paletteOf();
+  const sym=document.getElementById('sm_sym');
+  if(sym) sym.value=symmetryOf();
+  const sh=document.getElementById('sm_shape'), st=document.getElementById('sm_strip');
+  if(sh) sh.classList.toggle('on', P.srcMode===1);
+  if(st) st.classList.toggle('on', P.srcMode===0);
+}
+
+// An Advanced edit, a Look chip, Surprise me or Reset all change the look under the macros —
+// re-snapshot and recentre them, so they keep offsetting from what's actually on screen.
+document.getElementById('panels').addEventListener('input', ()=>{ rebase(); syncSimple(); });
+document.getElementById('panels').addEventListener('change', ()=>{ rebase(); syncSimple(); });
+document.getElementById('leftpresets').addEventListener('click', ()=> setTimeout(()=>{ rebase(); syncSimple(); }, 0));
+
+function setTier(mode){
+  document.body.classList.remove('mode-browse','mode-simple','mode-advanced');
+  document.body.classList.add('mode-'+mode);
+  document.querySelectorAll('#modesw button').forEach(b=>b.classList.toggle('on', b.dataset.mode===mode));
+  try{ localStorage.setItem('wwl_tier', mode); }catch(_){}
+  if(mode!=='browse') syncSimple();
+}
+document.querySelectorAll('#modesw button').forEach(b=>
+  b.addEventListener('click', ()=>setTier(b.dataset.mode)));
+
+buildSimplePanel();
+let tier0='simple';
+try{ tier0=localStorage.getItem('wwl_tier')||'simple'; }catch(_){}
+setTier(tier0);
+
 
 renderPresetList();
 syncAllControls();
+applyAspect();
 requestAnimationFrame(loop);
+rebase();
+syncSimple();
 </script>
 </body>
 </html>
